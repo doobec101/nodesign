@@ -1,0 +1,1344 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>nodesign — first screen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Doto:wght,ROND@100..900,0..100&family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap" rel="stylesheet" />
+  <style>
+    /* =========================================================
+       Tokens — snapshot of the Ardor first-screen system.
+       Layout units are "design px"; `.ui` applies --ui-scale
+       via zoom, the same way the reference does (body zoom 1.25).
+       ========================================================= */
+    :root {
+      --ui-scale: 1.25;
+
+      /* color — light theme is the dark one mirrored */
+      --color-background: #FAF7EE;
+      --color-surface: #ffffffbf;        /* #FFF · 75% */
+      --color-surface-ink: #0009;        /* #000 · 60% */
+      --color-ink: #0B0A16;
+      --color-ink-muted: #0b0a169e;      /* 62% */
+      --color-ink-faint: #0b0a1685;      /* 52% */
+      --color-on-ink: #F4F3FA;
+      --color-accent: #7836CC;
+      --color-heading: #7836CC;
+      --color-button: #7836CC;
+      --color-button-hover: #FA4616;
+      --color-on-button: #FFFFFF;
+      --color-hover: #FA4616;            /* every hover state lands on this */
+      --color-link: var(--color-ink);    /* text links */
+      --color-placeholder: var(--color-ink-muted);
+
+      /* background texture under the cursor displacement (screen px) */
+      --fx-bg: var(--color-background);
+      --fx-dot: #E3DED2;
+      --fx-dot-active: var(--color-accent);   /* a dot right under the cursor */
+      --fx-dot-size: 3.75px;
+      --fx-dot-gap: 26.25px;
+
+
+      /* type */
+      --font-sans: "Roboto Flex", system-ui, -apple-system, "Segoe UI", Arial, Helvetica, sans-serif;
+      --font-display: "Doto", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --text-body: 13px;       --leading-body: 1.2;
+      --text-label: 13px;      --leading-label: .9;
+      --text-caption: 10px;    --leading-caption: .9;
+      --text-heading: 32px;    --leading-heading: 1;
+      --text-chat-title: 24px;
+      --text-subheading: 19px; --leading-subheading: 1.2;
+      --tracking-tight: -.025em;
+      --tracking-wider: .05em;
+
+      /* shape */
+      --radius-pill: 19.218px;
+      --radius-card: 20px;
+      --radius-plate: 25px;
+
+      /* layout */
+      --container-content: 762px;
+      --container-media: 506px;
+      --container-copy: 378px;
+      --page-gutter: 20px;
+      --spacing-section: 180px;
+      --spacing-grid: 52px;
+      --spacing-gutter: 6px;
+      --header-h: 62px;
+
+      /* plate */
+      --plate-pad-x: 16px;
+      --plate-pad-b: 14px;
+      --plate-field-pt: 16px;
+      --plate-field-min: 36px;
+      --plate-field-max: 144px;
+      --plate-tools-bottom: 11px;
+      --plate-tools-gap: 13px;
+      --send-size: 28px;
+      --send-icon: 24px;
+      --send-idle-opacity: .3;
+
+      /* effects */
+      --blur-surface: 10px;
+      --dot: 3.2px;
+      --dot-gap: 4px;
+
+      /* motion */
+      --ease-standard: cubic-bezier(.4, 0, .2, 1);
+      --ease-out: cubic-bezier(0, 0, .2, 1);
+      --dur-quiet: .15s;
+      --dur-arrow: .2s;
+      --dur-reveal: .28s;
+      --dur-reveal-blur: .56s;
+      --dur-panel: .3s;
+      --dur-chat: .45s;          /* hero → chat choreography */
+      --dur-placeholder: 3.4s;
+    }
+
+    [data-theme="dark"] {
+      --color-background: #0C0B16;
+      --color-surface: #17162Abf;
+      --color-surface-ink: #eeedf299;
+      --color-ink: #EEEDF2;
+      --color-ink-muted: #eeedf2a6;
+      --color-ink-faint: #eeedf278;
+      --color-on-ink: #0C0B16;
+      --color-accent: #C2A0FF;
+      --color-heading: #FA4616;
+      --color-button: #7836CC;
+      --color-button-hover: #FA4616;
+      --color-on-button: #FFFFFF;
+      --color-link: var(--color-ink);
+      --color-placeholder: var(--color-ink-muted);
+      --fx-dot: #26244A;
+    }
+
+    /* < md: the reference drops the zoom and goes to 16 / 36 */
+    @media (max-width: 767px) {
+      :root {
+        --ui-scale: 1;
+        --text-body: 16px;
+        --text-label: 16px;
+        --text-caption: 12px;
+        --text-subheading: 22px;
+        --text-heading: 36px;
+        --fx-dot-size: 3px;
+        --fx-dot-gap: 21px;
+      }
+    }
+
+    /* ---------- base ---------- */
+    *, *::before, *::after { box-sizing: border-box; }
+    /* background lives on <html> only: a body background would paint OVER the z −10 dots layer */
+    html { background: var(--color-background); }
+    body {
+      margin: 0;
+      min-height: 100lvh;
+      background: transparent;   /* explicit: a host reset must not paint over the z −10 dots layer */
+      color: var(--color-ink);
+      font-family: var(--font-sans);
+      font-size: var(--text-body);
+      line-height: var(--leading-body);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+    :focus-visible { outline: 1.5px solid var(--color-ink); outline-offset: 3px; border-radius: 2px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+    /* ---------- z −10 · glowing interactive dots grid (the script fills it with .dot elements) ---------- */
+    .fx {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100lvh;
+      z-index: -10;
+      pointer-events: none;
+      background: var(--fx-bg);
+      display: flex; flex-wrap: wrap; justify-content: center; align-content: center;
+      gap: var(--fx-dot-gap);
+      overflow: hidden;
+    }
+    .fx .dot {
+      width: var(--fx-dot-size); height: var(--fx-dot-size);
+      border-radius: 50%;
+      background-color: var(--fx-dot);
+      transform: translate(0);
+      will-change: transform, background-color;
+    }
+
+    /* ---------- scaled UI ---------- */
+    .ui {
+      zoom: var(--ui-scale);
+      min-height: calc(100lvh / var(--ui-scale));
+      position: relative;
+    }
+
+    /* ---------- z 50 · header ---------- */
+    .site-header {
+      position: fixed; inset: 0 0 auto 0;
+      z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px var(--page-gutter);
+      background: transparent;
+    }
+    /* wordmark is plain text, set exactly like a nav link */
+    .logo, .nav a, .cta {
+      font-size: var(--text-label); line-height: var(--leading-label);
+      white-space: nowrap;
+    }
+    .logo, .nav a { color: var(--color-link); }
+    .header-right { display: flex; align-items: center; gap: 15px; }
+    .theme-toggle {
+      display: flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; margin: -4px 0;
+      color: var(--color-ink);
+    }
+    .theme-toggle svg { display: block; }
+    .theme-toggle .ic-sun, [data-theme="dark"] .theme-toggle .ic-moon { display: none; }
+    [data-theme="dark"] .theme-toggle .ic-sun { display: block; }
+    .nav { display: flex; align-items: center; gap: 10px; }
+    .cta {
+      display: inline-flex; align-items: center; gap: 20px;
+      padding: 5px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--color-button);
+      color: var(--color-on-button);
+      transition: background-color var(--dur-quiet) var(--ease-standard);
+    }
+    .cta svg { flex: none; display: block; transition: transform var(--dur-arrow) var(--ease-standard); }
+    @media (hover: hover) {
+      .cta:hover { background: var(--color-button-hover); }
+      .cta:hover svg { transform: translateX(2px); }
+    }
+
+    /* hover: every interactive element turns --color-hover */
+    .quiet { transition: color var(--dur-quiet) var(--ease-standard); }
+    @media (hover: hover) { .quiet:hover, .branch:hover { color: var(--color-hover); } }
+
+    /* mobile menu (< md): a glass plate that grows out of the burger */
+    .menu { display: none; position: relative; z-index: 1; width: 40px; height: 40px; }
+    .menu-plate {
+      position: absolute; top: 0; left: 0;
+      display: grid; grid-template-rows: auto 0fr;
+      width: 40px; overflow: hidden;
+      border-radius: var(--radius-card);
+      background: var(--color-surface);
+      -webkit-backdrop-filter: blur(var(--blur-surface));
+      backdrop-filter: blur(var(--blur-surface));
+      transition: width var(--dur-panel) var(--ease-out), height var(--dur-panel) var(--ease-out), grid-template-rows var(--dur-panel) var(--ease-out);
+    }
+    .menu.is-open .menu-plate { width: 136px; grid-template-rows: auto 1fr; }
+    .menu.is-full .menu-list-wrap { overflow-y: auto; }
+    .menu.is-full .menu-list { display: none; }
+    .menu-convos {
+      display: none; flex-direction: column; align-items: flex-start; gap: 12px;
+      padding: 0 14px 22px;
+      animation: chat-line-in var(--dur-arrow) var(--ease-out) both;
+    }
+    .menu.is-full .menu-convos { display: flex; }
+    .menu-convos .cap {
+      font-size: var(--text-caption); line-height: 1.4; letter-spacing: var(--tracking-wider);
+      text-transform: uppercase; color: var(--color-ink-faint); margin-bottom: 2px;
+    }
+    .menu-convos .empty { color: var(--color-ink-faint); font-size: var(--text-label); line-height: 1.4; }
+    .menu-btn { display: flex; width: 40px; height: 40px; align-items: center; justify-content: center; }
+    .menu-btn svg { display: block; }
+    .menu-btn .ic-close, .menu.is-open .menu-btn .ic-burger { display: none; }
+    .menu.is-open .menu-btn .ic-close { display: block; }
+    .menu-list-wrap { min-height: 0; overflow: hidden; }
+    .menu-list {
+      display: flex; flex-direction: column; padding-bottom: 22px;
+      opacity: 0; filter: blur(3px);
+      transition: opacity var(--dur-arrow) var(--ease-out), filter var(--dur-arrow) var(--ease-out);
+    }
+    .menu.is-open .menu-list { opacity: 1; filter: none; transition-delay: var(--dur-arrow); }
+    .menu-list a, .menu-list button {
+      padding: 15px 14px; text-align: left;
+      font-size: var(--text-label); line-height: var(--leading-label); white-space: nowrap;
+      color: var(--color-link);
+    }
+
+    /* ---------- z 50 · footer: © year + wordmark, bottom centre ---------- */
+    .site-footer {
+      position: fixed; left: 0; right: 0; bottom: var(--page-gutter);
+      z-index: 30; pointer-events: none;   /* below the header and its menu sheet */
+      display: flex; justify-content: center; align-items: center; gap: 5px;
+      font-size: var(--text-label); line-height: var(--leading-label); white-space: nowrap;
+      color: var(--color-ink-muted);
+    }
+    .site-footer a { pointer-events: auto; }
+
+    /* ---------- hero ---------- */
+    .hero {
+      min-height: calc(100lvh / var(--ui-scale));
+      display: flex; align-items: center; justify-content: center;
+      /* centre the block in the field below the header → sits a little under optical centre */
+      padding: calc(var(--header-h) / 2) var(--page-gutter) 0;
+    }
+    .hero-inner {
+      width: 100%; max-width: var(--container-content);
+      display: flex; flex-direction: column; align-items: center;
+      gap: 23px; position: relative;
+    }
+    .hero-copy {
+      width: 100%;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 20px; text-align: center;
+      transition: opacity var(--dur-reveal) var(--ease-out);
+    }
+
+    /* ---------- chat mode: copy fades, thread grows above a docked composer ---------- */
+    body.is-chat .hero { min-height: 0; padding: 0; }
+    body.is-chat .hero-copy { position: absolute; inset: 0 auto auto 0; opacity: 0; pointer-events: none; }
+    body.is-chat .plate-wrap {
+      position: fixed; left: var(--page-gutter); right: var(--page-gutter); bottom: var(--page-gutter);
+      width: auto; margin: 0 auto; z-index: 40;
+    }
+    body.is-chat .site-footer { opacity: 0; pointer-events: none; }
+    .site-footer { transition: opacity var(--dur-reveal) var(--ease-out); }
+
+    .thread {
+      display: none;
+      position: fixed; left: var(--page-gutter); right: var(--page-gutter);
+      top: calc(var(--header-h) + 20px); bottom: calc(var(--composer-h, 50px) + var(--page-gutter) * 2);
+      width: auto; max-width: var(--container-media); margin: 0 auto;
+      flex-direction: column; gap: 18px;
+      padding: var(--plate-field-pt) var(--plate-pad-x);
+      overflow-y: auto; overscroll-behavior: contain;
+      scrollbar-width: thin; scrollbar-color: var(--color-ink-faint) transparent;
+      font-size: var(--text-label); line-height: 1.4;
+      /* the same glass as the composer */
+      border-radius: var(--radius-plate);
+      background: var(--color-surface);
+      -webkit-backdrop-filter: blur(var(--blur-surface));
+      backdrop-filter: blur(var(--blur-surface));
+    }
+    body.is-chat .thread { display: flex; animation: panel-in var(--dur-chat) var(--ease-out) both; animation-delay: .12s; }
+    @keyframes panel-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+    /* the headline's landing spot: header centre, on the Email line; cycles its phrases like the hero */
+    .chat-title {
+      position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+      font-family: var(--font-display); font-weight: 900; font-variation-settings: "ROND" 100;
+      font-size: var(--text-chat-title); line-height: var(--leading-heading); white-space: nowrap;
+      color: var(--color-heading); pointer-events: none;
+      visibility: hidden;
+    }
+    .chat-title.is-on { visibility: visible; pointer-events: auto; cursor: pointer; }   /* click = back to the hero */
+    .chat-title .block { display: block; }
+    /* the headline in flight between the hero and the header */
+    .fly-title {
+      position: fixed; z-index: 60; pointer-events: none; white-space: nowrap;
+      font-family: var(--font-display); font-weight: 900; font-variation-settings: "ROND" 100;
+      font-size: var(--text-heading); line-height: var(--leading-heading); color: var(--color-heading);
+      transform-origin: 50% 50%; will-change: transform;
+      transition: transform var(--dur-chat) var(--ease-out);
+    }
+    .msg { animation: chat-line-in var(--dur-arrow) var(--ease-out) both; scroll-margin-top: var(--plate-field-pt); flex: none; }
+    .msg-q { color: var(--color-ink-muted); }
+    .msg-a { color: var(--color-ink); }
+    .msg-a .text { white-space: pre-line; }
+    .msg-a a { color: var(--color-link); text-decoration: underline; text-underline-offset: 2px; }
+    /* not in the CV → hand the question to Anton */
+    .ask-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; }
+    .ask-btn {
+      display: inline-flex; align-items: center; gap: 20px;
+      padding: 5px 10px; border-radius: var(--radius-pill);
+      font-size: var(--text-label); line-height: var(--leading-label); white-space: nowrap;
+      border: 1px solid var(--color-ink-faint); color: var(--color-ink); background: transparent;
+      transition: color var(--dur-quiet) var(--ease-standard), border-color var(--dur-quiet) var(--ease-standard), background-color var(--dur-quiet) var(--ease-standard);
+    }
+    .ask-btn--primary { background: var(--color-button); border-color: transparent; color: var(--color-on-button); }
+    @media (hover: hover) {
+      .ask-btn:hover { color: var(--color-hover); border-color: var(--color-hover); }
+      .ask-btn--primary:hover { background: var(--color-button-hover); color: var(--color-on-button); }
+    }
+    .ask-btn[disabled] { opacity: .5; pointer-events: none; }
+    .msg-a a.ask-btn { text-decoration: none; }
+    .msg-status .block { display: block; }
+    /* answer meta: time + copy, on hover (always on touch) */
+    .meta {
+      display: flex; align-items: center; gap: 10px; margin-top: 8px;
+      font-size: var(--text-caption); line-height: var(--leading-caption); letter-spacing: var(--tracking-wider);
+      color: var(--color-ink-faint);
+      opacity: 0; transition: opacity var(--dur-quiet) var(--ease-standard);
+    }
+    .msg-a:hover .meta, .msg-a:focus-within .meta { opacity: 1; }
+    @media (hover: none) { .meta { opacity: 1; } }
+    .copy { display: inline-flex; align-items: center; gap: 4px; color: inherit; text-transform: lowercase; }
+    .copy svg { display: block; }
+    .typing { display: flex; gap: var(--dot-gap); padding: 6px 0; }
+    .typing i {
+      display: block; width: var(--dot); height: var(--dot); border-radius: 50%;
+      background: var(--color-ink); opacity: .35;
+      animation: chat-typing-dot 1s ease-in-out infinite;
+    }
+    .typing i:nth-child(2) { animation-delay: .15s; }
+    .typing i:nth-child(3) { animation-delay: .3s; }
+    @keyframes chat-line-in { 0% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: none; } }
+    @keyframes chat-typing-dot { 0%, 60%, 100% { opacity: .35; } 30% { opacity: 1; } }
+
+    /* ---------- z 40 · branches: every question of the conversation, in the left gutter (≥ xl) ---------- */
+    .branches {
+      position: fixed; left: var(--page-gutter); top: calc(var(--header-h) + 20px); bottom: calc(var(--composer-h, 50px) + var(--page-gutter) * 2);
+      width: 180px; z-index: 40; overflow-y: auto;
+      padding-top: var(--plate-field-pt);           /* caption lines up with the first question in the panel */
+      display: none; flex-direction: column; align-items: flex-start; gap: 12px;
+      scrollbar-width: none;
+    }
+    .branches .cap {
+      font-size: var(--text-caption); line-height: 1.4; letter-spacing: var(--tracking-wider);
+      text-transform: uppercase; color: var(--color-ink-faint); margin-bottom: 2px;
+    }
+    .branch {
+      display: block; width: 100%; max-width: 100%; text-align: left;
+      font-size: var(--text-label); line-height: 1.2; color: var(--color-ink-muted);
+      animation: chat-line-in var(--dur-arrow) var(--ease-out) both;
+      transition: color var(--dur-quiet) var(--ease-standard);
+    }
+    .branch .scr { display: block; max-width: 100%; }
+    .branch .scr-ghost, .branch .scr-live { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .branch.is-active { color: var(--color-ink); }
+    /* a selected question replays the link hover: scramble + hover colour */
+    .msg-q { transition: color var(--dur-quiet) var(--ease-standard); }
+    .msg-q.is-hot { color: var(--color-hover); }
+    @media (min-width: 1200px) { body.is-chat .branches { display: flex; animation: panel-in var(--dur-chat) var(--ease-out) both; animation-delay: .2s; } }
+    .display {
+      margin: 0; width: 100%;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-heading); line-height: var(--leading-heading);
+      font-variation-settings: "ROND" 100;
+      letter-spacing: normal;
+      color: var(--color-heading);
+      text-wrap: balance;
+      position: relative;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    @media (min-width: 1024px) { .display { white-space: nowrap; } }
+    .lede {
+      margin: 0; max-width: var(--container-media);
+      text-wrap: balance;
+      font-size: var(--text-body); line-height: var(--leading-body);
+      color: var(--color-ink-muted);
+    }
+
+    /* ---------- plate ---------- */
+    .plate-wrap { width: 100%; max-width: var(--container-media); position: relative; }
+    .plate {
+      position: relative; width: 100%;
+      display: flex; flex-direction: column; overflow: hidden;
+      padding: 0 var(--plate-pad-x) var(--plate-pad-b);
+      border-radius: var(--radius-plate);
+      background: var(--color-surface);
+      -webkit-backdrop-filter: blur(var(--blur-surface));
+      backdrop-filter: blur(var(--blur-surface));
+      transition: padding var(--dur-panel) var(--ease-standard), border-radius var(--dur-panel) var(--ease-standard);
+    }
+    .plate-field {
+      position: relative; display: flex; width: 100%;
+      padding-right: var(--tools-w, 156px);
+      transition: padding var(--dur-panel) var(--ease-standard);
+    }
+    .plate textarea {
+      flex: 1; width: 100%; min-width: 0;
+      height: var(--plate-field-min); max-height: var(--plate-field-max);
+      margin: 0; padding: var(--plate-field-pt) 0 0;
+      resize: none; border: 0; outline: none; background: transparent;
+      font: inherit; font-size: var(--text-label); line-height: 1.4;
+      color: var(--color-ink);
+      overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere;
+      scrollbar-width: thin; scrollbar-color: transparent transparent;
+      transition: height var(--dur-panel) var(--ease-standard);
+    }
+    .plate textarea::placeholder { color: transparent; }
+    .placeholder {
+      position: absolute; inset: 0 var(--tools-w, 156px) 0 0;
+      padding-top: var(--plate-field-pt);
+      pointer-events: none; overflow: hidden;
+      font-size: var(--text-label); line-height: 1.4;
+      color: var(--color-placeholder);
+      transition: right var(--dur-panel) var(--ease-standard);
+    }
+    .placeholder[hidden] { display: none; }
+    .placeholder-text {
+      display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      animation: hero-placeholder var(--dur-placeholder) ease-in-out both;
+    }
+    @keyframes hero-placeholder {
+      0%        { opacity: 0; filter: blur(6px); transform: translateY(.9em); }
+      12%, 86%  { opacity: 1; filter: blur(0);   transform: translateY(0); }
+      100%      { opacity: 0; filter: blur(6px); transform: translateY(-.9em); }
+    }
+    .plate-tools {
+      position: absolute; right: var(--plate-pad-x); bottom: var(--plate-tools-bottom);
+      display: flex; align-items: center; gap: var(--plate-tools-gap);
+      transition: bottom var(--dur-panel) var(--ease-standard);
+    }
+    .tab-hint {
+      display: none; align-items: center;
+      padding: 3px 5px 2px;
+      border: 1px solid var(--color-ink-faint); border-radius: 5px;
+      font-family: var(--font-sans); font-size: var(--text-caption); line-height: var(--leading-caption);
+      letter-spacing: var(--tracking-wider); text-transform: lowercase;
+      color: var(--color-ink-faint);
+      transition: opacity var(--dur-quiet) var(--ease-standard);
+    }
+    @media (hover: hover) and (min-width: 768px) { .tab-hint { display: flex; } .tab-hint[hidden] { display: none; } }
+    .send {
+      width: var(--send-size); height: var(--send-size);
+      display: grid; place-items: center;
+      opacity: var(--send-idle-opacity); pointer-events: none;
+    }
+    .send svg { display: block; width: var(--send-icon); height: var(--send-icon); }
+    .send circle { fill: var(--color-button); transition: fill var(--dur-quiet) var(--ease-standard); }
+    .send path { stroke: var(--color-on-button); }
+    @media (hover: hover) { .send:hover circle { fill: var(--color-hover); } }
+    .send.is-ready { opacity: 1; pointer-events: auto; }
+
+    /* ---------- scramble text: real string for AT + invisible copy for width + live overlay ---------- */
+    .scr { position: relative; display: inline-block; white-space: nowrap; }
+    .scr-ghost { visibility: hidden; }
+    .scr-live { position: absolute; inset: 0; }
+    .display .block { display: block; }
+
+    /* ---------- reveal on load ---------- */
+    .reveal {
+      opacity: 0; filter: blur(8px);
+      transition: opacity var(--dur-reveal) var(--ease-out), filter var(--dur-reveal-blur) var(--ease-standard);
+    }
+    .reveal[data-reveal="shown"]   { opacity: 1; filter: blur(.001px); }
+    .reveal[data-reveal="settled"] { opacity: 1; filter: none; }
+
+    /* ---------- < md ---------- */
+    @media (max-width: 767px) {
+      .site-header {
+        display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 15px;
+      }
+      .menu { display: block; }
+      .header-right { justify-self: end; }
+      .nav, .theme-toggle, .chat-title { display: none; }
+      .thread { top: calc(var(--page-gutter) * 2 + var(--menu-h, 40px)); }
+      .cta { padding: 14px 16px; gap: 0; }
+      .cta svg { display: none; }
+      .reveal { opacity: 1; filter: none; transition: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; filter: none; transition: none; }
+      .placeholder-text { animation: none; opacity: 1; }
+      .msg, .branch, .typing i { animation: none; opacity: 1; }
+      .hero-copy, .site-footer, .plate-wrap { transition: none; }
+      .cta svg, .quiet, .plate, .plate-field, .placeholder, .plate-tools, .menu-plate, .menu-list { transition: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- z −10 · glowing interactive dots grid — Osmo's "Glowing Interactive Dots Grid" (GSAP + InertiaPlugin),
+       fed by the theme tokens: dots light up around the cursor, a fast swipe throws them and they spring back,
+       a click sends a shockwave. Classic scripts on purpose: they load fine when the page is opened from disk (file://). -->
+  <div class="fx" id="fx" aria-hidden="true"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15/dist/InertiaPlugin.min.js"></script>
+  <script>
+  (() => {
+    gsap.registerPlugin(InertiaPlugin);
+
+    const container = document.getElementById('fx');
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+
+    const threshold      = 200;    // px around the pointer within which dots light up
+    const speedThreshold = 100;    // px/s the pointer must move to throw dots
+    const shockRadius    = 325;    // px — the click shockwave
+    const shockPower     = 5;
+    const maxSpeed       = 5000;   // px/s cap on the pointer velocity
+    const resistance     = 750;
+
+    const token = (n) => getComputedStyle(container).getPropertyValue(n).trim();
+    let colors = { base: '', active: '' };
+    let dots = [];                 // { el, x, y, pushed } — centres in viewport px (the layer is fixed, so they never scroll)
+    const lit = new Set();         // dots currently carrying an inline colour
+
+    const readColors = () => { colors = { base: token('--fx-dot'), active: token('--fx-dot-active') }; };
+
+    function buildGrid() {
+      readColors();
+      container.textContent = ''; dots = []; lit.clear();
+      const dot = parseFloat(token('--fx-dot-size')), gap = parseFloat(token('--fx-dot-gap')), pitch = dot + gap;
+      const cols = Math.floor((container.clientWidth + gap) / pitch), rows = Math.floor((container.clientHeight + gap) / pitch);
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < cols * rows; i++) { const d = document.createElement('div'); d.className = 'dot'; frag.appendChild(d); }
+      container.appendChild(frag);
+      requestAnimationFrame(() => {
+        dots = [...container.children].map(el => { const r = el.getBoundingClientRect(); return { el, x: r.left + r.width / 2, y: r.top + r.height / 2, pushed: false }; });
+      });
+    }
+
+    /* throw a dot and let it spring back */
+    function push(d, x, y) {
+      d.pushed = true;
+      gsap.to(d.el, { inertia: { x, y, resistance }, onComplete() {
+        gsap.to(d.el, { x: 0, y: 0, duration: 1.5, ease: 'elastic.out(1,0.75)' });
+        d.pushed = false;
+      } });
+    }
+
+    /* pointer: glow by distance, throw by speed — one pass per frame, only the dots that changed are touched */
+    let lastTime = 0, lastX = 0, lastY = 0, pending = null;
+    function onMove(e) {
+      const now = performance.now(), dt = now - lastTime || 16;
+      let vx = (e.clientX - lastX) / dt * 1000, vy = (e.clientY - lastY) / dt * 1000, speed = Math.hypot(vx, vy);
+      if (speed > maxSpeed) { const k = maxSpeed / speed; vx *= k; vy *= k; speed = maxSpeed; }
+      lastTime = now; lastX = e.clientX; lastY = e.clientY;
+      const throwing = !reduced.matches && speed > speedThreshold;
+      if (!pending) requestAnimationFrame(() => {
+        const { x: px, y: py } = pending; pending = null;
+        for (const d of dots) {
+          const dist = Math.hypot(d.x - px, d.y - py);
+          if (dist < threshold) {
+            d.el.style.backgroundColor = gsap.utils.interpolate(colors.base, colors.active, 1 - dist / threshold); lit.add(d);
+            if (throwing && !d.pushed) push(d, (d.x - px) + vx * 0.005, (d.y - py) + vy * 0.005);
+          } else if (lit.has(d)) { d.el.style.backgroundColor = ''; lit.delete(d); }
+        }
+      });
+      pending = { x: e.clientX, y: e.clientY };
+    }
+
+    function onClick(e) {
+      if (reduced.matches) return;
+      for (const d of dots) {
+        const dist = Math.hypot(d.x - e.clientX, d.y - e.clientY);
+        if (dist < shockRadius && !d.pushed) {
+          const falloff = 1 - dist / shockRadius;
+          push(d, (d.x - e.clientX) * shockPower * falloff, (d.y - e.clientY) * shockPower * falloff);
+        }
+      }
+    }
+
+    buildGrid();
+    let resizeTimer; window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(buildGrid, 150); });
+    window.addEventListener('mousemove', onMove, { passive: true });
+    window.addEventListener('click', onClick);
+    // theme switch: new colours, and every lit dot goes back to the stylesheet's base
+    new MutationObserver(() => { readColors(); for (const d of lit) d.el.style.backgroundColor = ''; lit.clear(); })
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  })();
+  </script>
+
+  <div class="ui">
+
+    <!-- z 50 · header -->
+    <header class="site-header reveal" data-reveal>
+      <div class="menu" id="menu">
+        <div class="menu-plate">
+          <button type="button" class="menu-btn quiet" aria-label="Menu" aria-expanded="false" aria-controls="site-menu">
+            <svg class="ic-burger" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M1.5 3.5H12.5M1.5 7H12.5M1.5 10.5H12.5" stroke="currentColor" stroke-width="1.2"/></svg>
+            <svg class="ic-close" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 2.5L11.5 11.5M11.5 2.5L2.5 11.5" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
+          <div class="menu-list-wrap">
+            <nav id="site-menu" class="menu-list" aria-label="Contacts">
+              <a class="quiet" href="mailto:doobec101@gmail.com"><span data-scramble-text>Email</span></a>
+              <a class="quiet" href="https://t.me/doob101" target="_blank" rel="noopener"><span data-scramble-text>Telegram</span></a>
+              <a class="quiet" href="https://www.linkedin.com/in/anton-dubovik-nodesign" target="_blank" rel="noopener"><span data-scramble-text>LinkedIn</span></a>
+              <button type="button" class="quiet" data-theme-toggle><span data-scramble-text>Theme</span></button>
+              <button type="button" class="quiet" id="convosBtn"><span data-scramble-text>Conversations</span></button>
+            </nav>
+            <div class="menu-convos" id="menuConvos" aria-label="Conversations">
+              <div class="cap">Conversations</div>
+              <div class="empty">No conversations yet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="chat-title quiet" id="chatTitle" aria-label="Back to start" tabindex="-1"
+              data-scramble-heading data-autoplay="false" data-hold-ms="5000"
+              data-phrases='["Anton Dubovik experience", "From Entropy to Aesthetic"]'>
+        <span class="sr-only">Anton Dubovik experience</span>
+        <span aria-hidden="true" data-scramble-live><span class="block">Anton Dubovik experience</span></span>
+      </button>
+
+      <nav class="nav" aria-label="Contacts">
+        <a class="quiet" href="mailto:doobec101@gmail.com"><span data-scramble-text>Email</span></a>
+        <a class="quiet" href="https://t.me/doob101" target="_blank" rel="noopener"><span data-scramble-text>Telegram</span></a>
+        <a class="quiet" href="https://www.linkedin.com/in/anton-dubovik-nodesign" target="_blank" rel="noopener"><span data-scramble-text>LinkedIn</span></a>
+      </nav>
+
+      <div class="header-right">
+        <button type="button" class="theme-toggle quiet" data-theme-toggle aria-label="Switch to light theme">
+          <svg class="ic-sun" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <circle cx="7" cy="7" r="2.6" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M7 .8v1.9M7 11.3v1.9M.8 7h1.9M11.3 7h1.9M2.6 2.6l1.35 1.35M10.05 10.05l1.35 1.35M2.6 11.4l1.35-1.35M10.05 3.95l1.35-1.35" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/>
+          </svg>
+          <svg class="ic-moon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M11.9 8.6A5.2 5.2 0 0 1 5.4 2.1a5.2 5.2 0 1 0 6.5 6.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <a class="cta" href="https://cdn.prod.website-files.com/64c52c3c4e7720d70df6df00/6a84c73b097712c49a1139b8_AntonD_CV_Aug_26_eng.pdf" target="_blank" rel="noopener">
+          <span data-scramble-text>Open CV</span>
+          <svg width="9" height="9" viewBox="0 0 9 9" fill="none" aria-hidden="true">
+            <path d="M1 4.5h6.5M4.6 1.2 7.9 4.5 4.6 7.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/>
+          </svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- z 50 · scroll hint (bottom centre, ≥ lg) -->
+    <footer class="site-footer reveal" data-reveal>
+      <span>&copy; <span id="year">2026</span></span>
+      <a class="logo quiet" href="#" aria-label="nodesign"><span data-scramble-text>nodesign</span></a>
+    </footer>
+
+    <!-- content -->
+    <main class="hero">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <div class="reveal" data-reveal style="width:100%">
+            <h1 class="display" data-scramble-heading data-hold-ms="5000"
+                data-phrases='["From Entropy to Aesthetic", "Anton Dubovik portfolio. Work In Progress."]'>
+              <span class="sr-only">From Entropy to Aesthetic</span>
+              <span aria-hidden="true" data-scramble-live><span class="block">From Entropy to Aesthetic</span></span>
+            </h1>
+          </div>
+          <div class="reveal" data-reveal>
+            <p class="lede">7 YoE designing complex B2B products end to end. Fintech and Dev2Dev. AI native design systems 0 → 1</p>
+          </div>
+        </div>
+
+        <div class="thread" id="thread" role="log" aria-live="polite" aria-label="Answers"></div>
+
+        <div class="plate-wrap reveal" data-reveal>
+          <form class="plate" id="composer" novalidate>
+            <div class="plate-field" id="field">
+              <textarea id="task" aria-label="Describe the task" maxlength="2500" rows="1"></textarea>
+              <span class="placeholder" id="placeholder" aria-hidden="true"><span class="placeholder-text" id="placeholderText">What does Anton do?</span></span>
+            </div>
+            <div class="plate-tools" id="tools">
+              <kbd class="tab-hint" id="tabHint" aria-hidden="true">tab</kbd>
+              <button type="submit" class="send quiet" id="send" aria-label="Send" aria-disabled="true" tabindex="-1">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="12"/>
+                  <path d="M12 16.5v-8M8.2 12.2 12 8.4l3.8 3.8" stroke-width="1.2" stroke-linecap="square"/>
+                </svg>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <!-- z 40 · conversation branches (chat mode, ≥ xl) -->
+    <aside class="branches" id="branches" aria-label="Conversation"><div class="cap">Conversation</div></aside>
+  </div>
+
+  <script>
+  (() => {
+    const root = document.documentElement;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    /* ---------- theme: ?theme= → saved choice → light ---------- */
+    const THEME_KEY = 'nodesign-theme-2';
+    const setTheme = (t, persist) => {
+      root.setAttribute('data-theme', t);
+      document.querySelectorAll('.theme-toggle').forEach(b => b.setAttribute('aria-label', `Switch to ${t === 'dark' ? 'light' : 'dark'} theme`));
+      if (persist) { try { localStorage.setItem(THEME_KEY, t); } catch (e) {} }
+    };
+    const qs = new URLSearchParams(location.search).get('theme');
+    let saved = null; try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+    setTheme(qs === 'dark' || qs === 'light' ? qs : (saved === 'dark' || saved === 'light' ? saved : 'light'), false);
+    document.querySelectorAll('[data-theme-toggle]').forEach(b =>
+      b.addEventListener('click', () => setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark', true)));
+
+    /* ---------- tokens → JS ---------- */
+    const token = (name) => getComputedStyle(root).getPropertyValue(name).trim();
+    const hexToRgb = (hex) => {
+      const h = hex.replace('#', '');
+      const n = parseInt(h.length <= 4 ? h.split('').map(c => c + c).join('') : h, 16);
+      const shift = h.length === 8 ? 8 : 0;           // ignore alpha
+      return [((n >> (16 + shift)) & 255) / 255, ((n >> (8 + shift)) & 255) / 255, ((n >> shift) & 255) / 255];
+    };
+
+    const phone = () => innerWidth < 768;
+
+    /* ---------- reveal on load ---------- */
+    const reveals = [...document.querySelectorAll('.reveal')];
+    const revealAll = () => {
+      reveals.forEach((el, i) => {
+        const delay = 90 * i;
+        setTimeout(() => el.setAttribute('data-reveal', 'shown'), delay);
+        setTimeout(() => el.setAttribute('data-reveal', 'settled'), delay + 600);
+      });
+    };
+    document.fonts ? document.fonts.ready.then(revealAll) : revealAll();
+    if (!phone() && matchMedia('(hover: hover)').matches) document.getElementById('task').focus({ preventScroll: true });
+
+    /* ---------- scramble text (port of the reference: + x . ˚, 38 ms tick, left → right) ---------- */
+    const SCR = { chars: ['+', 'x', '.', '\u02da'], tick: 38 };
+    const buildFrame = (lines, revealed) => {
+      let n = 0;
+      return lines.map(line => Array.from(line).map(ch => {
+        const out = (ch === ' ' || n < revealed) ? ch : SCR.chars[Math.random() * SCR.chars.length | 0];
+        n += 1; return out;
+      }).join(''));
+    };
+    const revealStep = (total, durationMs) => durationMs ? Math.max(1, Math.ceil(total / Math.max(1, durationMs / SCR.tick))) : 1;
+
+    // headline: resolves out of noise when ≥ 35 % of it is in view, resets to noise when it leaves;
+    // with several phrases it holds each one for data-hold-ms, then resolves the next — forever
+    const initScrambleHeading = (h) => {
+      const sr = h.querySelector('.sr-only');
+      const live = h.querySelector('[data-scramble-live]');
+      const holdMs = Number(h.dataset.holdMs) || 0;
+      let phrases = [];
+      try { phrases = JSON.parse(h.dataset.phrases || '[]'); } catch (e) { phrases = []; }
+      if (!phrases.length) phrases = [[...live.children].map(b => b.textContent).join('\n')];
+
+      const blocksFor = (phrase) => phrase.split('\n').map(l => { const b = document.createElement('span'); b.className = 'block'; b.textContent = l; return b; });
+      let idx = 0, lines = [], blocks = [], total = 0, step = 1;
+      const setPhrase = (i) => {
+        idx = i; lines = phrases[i].split('\n');
+        live.replaceChildren(...blocksFor(phrases[i]));
+        blocks = [...live.children];
+        sr.textContent = lines.join(' ');
+        total = lines.reduce((sum, l) => sum + l.length, 0);
+        step = revealStep(total, Number(h.dataset.durationMs) || 0);
+      };
+      // reserve the height of the tallest phrase so the block below never jumps
+      const fitHeight = () => {
+        const probe = live.cloneNode(false);
+        probe.style.cssText = 'position:absolute;left:0;right:0;visibility:hidden;pointer-events:none';
+        h.appendChild(probe);
+        let max = 0;
+        phrases.forEach(ph => { probe.replaceChildren(...blocksFor(ph)); max = Math.max(max, probe.offsetHeight); });
+        probe.remove();
+        h.style.minHeight = max + 'px';
+      };
+      setPhrase(0);
+      if (phrases.length > 1) { fitHeight(); addEventListener('resize', fitHeight); }
+
+      const animate = !reduced.matches;
+      let timer = null, hold = null;
+      const paint = (r) => buildFrame(lines, r).forEach((t, i) => { blocks[i].textContent = t; });
+      const stop = () => { clearInterval(timer); timer = null; clearTimeout(hold); hold = null; };
+      const scheduleNext = () => {
+        if (phrases.length > 1 && holdMs > 0) hold = setTimeout(() => { setPhrase((idx + 1) % phrases.length); play(); }, holdMs);
+      };
+      const play = () => {
+        stop();
+        if (!animate) { paint(total); scheduleNext(); return; }
+        let r = 0; paint(r);
+        timer = setInterval(() => {
+          r += step; paint(r);
+          if (r >= total) { clearInterval(timer); timer = null; scheduleNext(); }
+        }, SCR.tick);
+      };
+      const begin = () => {
+        if (!animate) { paint(total); scheduleNext(); return; }   // reduced motion: plain swaps, no noise
+        paint(0);
+        new IntersectionObserver(([e]) => {
+          if (e.isIntersecting) play(); else { stop(); paint(0); }
+        }, { threshold: .35 }).observe(live);
+      };
+      h.scramble = {
+        start: () => { stop(); setPhrase(0); paint(total); scheduleNext(); },   // show phrase 0, then cycle
+        stop,
+        current: () => lines.join(' ')
+      };
+      if (h.dataset.autoplay === 'false') { paint(0); return; }
+      document.fonts ? document.fonts.ready.then(begin) : begin();
+    };
+    document.querySelectorAll('[data-scramble-heading]').forEach(initScrambleHeading);
+
+    // links / buttons: text re-scrambles on hover or focus, 420 ms
+    const initScrambleText = (el) => {
+      const text = el.textContent.trim();
+      const mk = (cls, hidden) => { const sp = document.createElement('span'); sp.className = cls; sp.textContent = text; if (hidden) sp.setAttribute('aria-hidden', 'true'); return sp; };
+      el.classList.add('scr'); el.textContent = '';
+      const live = mk('scr-live', true);
+      el.append(mk('sr-only', false), mk('scr-ghost', true), live);
+      if (reduced.matches) return;
+      const host = el.closest('a, button') || el;
+      const total = text.length, step = revealStep(total, 420);
+      let timer = null;
+      const stop = () => { if (timer) clearInterval(timer); timer = null; };
+      const play = () => {
+        stop(); let r = 0; live.textContent = buildFrame([text], r)[0];
+        timer = setInterval(() => { r += step; live.textContent = buildFrame([text], r)[0]; if (r >= total) stop(); }, SCR.tick);
+      };
+      host.addEventListener('pointerenter', play);
+      host.addEventListener('focusin', play);
+    };
+    document.querySelectorAll('[data-scramble-text]').forEach(initScrambleText);
+
+    /* ---------- composer ---------- */
+    const form = document.getElementById('composer');
+    const field = document.getElementById('field');
+    const ta = document.getElementById('task');
+    const tools = document.getElementById('tools');
+    const send = document.getElementById('send');
+    const ph = document.getElementById('placeholder');
+    const phText = document.getElementById('placeholderText');
+
+    // reserve room for the send button
+    const toolsGap = parseFloat(token('--plate-tools-gap'));
+    const fitTools = () => field.style.setProperty('--tools-w', (tools.offsetWidth + toolsGap) + 'px');
+    fitTools();
+    new ResizeObserver(fitTools).observe(tools);
+
+    const MIN = parseFloat(token('--plate-field-min')), MAX = parseFloat(token('--plate-field-max'));
+    const grow = () => {
+      ta.style.height = 'auto';
+      const h = Math.max(MIN, Math.min(ta.scrollHeight, MAX));
+      ta.style.height = h + 'px';
+      ta.style.overflowY = ta.scrollHeight > MAX ? 'auto' : 'hidden';   // scroll inside only past the cap
+    };
+    // every prompt is answerable from the CV — nothing else
+    const scenarios = [
+      'What does Anton do?',
+      'How many years of experience?',
+      'Where is Anton based?',
+      'What does \u201cend to end\u201d mean here?',
+      'What is his current role?',
+      'Which companies has he worked with?',
+      'Show the TradeRadar case',
+      'What did he build at Swordfish Security?',
+      'Tell me about WYA',
+      'Tell me about AppSec.Track',
+      'What was shipped on freelance?',
+      'What are the metrics?',
+      'How does he build design systems?',
+      'What is an AI-native design system?',
+      'Which tools does he use?',
+      'Can he prototype?',
+      'Does he do UX research?',
+      'Does he work remotely?',
+      'What is his education?',
+      'Send me the CV',
+      'How do I contact Anton?'
+    ];
+    let si = 0;
+    const tabHint = document.getElementById('tabHint');
+    const canAccept = () => { const v = ta.value, hint = scenarios[si]; return v === '' || (v !== hint && hint.toLowerCase().startsWith(v.toLowerCase())); };
+    const sync = () => {
+      tabHint.hidden = !canAccept();
+      const has = ta.value.trim().length > 0;
+      send.classList.toggle('is-ready', has);
+      send.setAttribute('aria-disabled', String(!has));
+      send.tabIndex = has ? 0 : -1;
+      ph.hidden = ta.value.length > 0;
+      grow();
+    };
+    ta.addEventListener('input', sync);
+    addEventListener('resize', grow);   // min-height differs across breakpoints
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+      // Tab accepts the suggestion: an empty field takes the current placeholder,
+      // a partly typed one is completed; anything else leaves Tab to the browser
+      if (e.key === 'Tab' && !e.shiftKey) {
+        const hint = scenarios[si], v = ta.value;
+        if (v === '' || (v !== hint && hint.toLowerCase().startsWith(v.toLowerCase()))) {
+          e.preventDefault();
+          ta.value = hint; sync();
+          ta.setSelectionRange(hint.length, hint.length);
+        }
+      }
+    });
+    /* ---------- answers: every line below is taken from the CV (AntonD_CV_Aug_26_eng.pdf); nothing else ---------- */
+    const CV_URL = 'https://cdn.prod.website-files.com/64c52c3c4e7720d70df6df00/6a84c73b097712c49a1139b8_AntonD_CV_Aug_26_eng.pdf';
+    const KB = [
+      [/\bcv\b|resume|r\u00e9sum\u00e9|\bpdf\b/i,
+       `Here it is: <a href="${CV_URL}" target="_blank" rel="noopener">AntonD_CV_Aug_26_eng.pdf</a>`],
+      [/contact|e-?mail|telegram|linkedin|reach|phone|call|write to|get in touch|hire|message/i,
+       'doobec101@gmail.com \u00b7 Telegram <a href="https://t.me/doob101" target="_blank" rel="noopener">@doob101</a> \u00b7 <a href="https://www.linkedin.com/in/anton-dubovik-nodesign" target="_blank" rel="noopener">in/anton-dubovik-nodesign</a> \u00b7 +7 930 276-31-73 \u00b7 nodesign.webflow.io'],
+      [/metric|number|result|impact|kpi|outcome|grew|growth|figure/i,
+       'Chat MAU 300 \u2192 680 in the four months after release.\nProfile completion 4% \u2192 57% in the first month, 82% the following quarter.\n17 design-system components published in two months, alongside product work.\nInteractive UI kit that roughly doubled design-to-development speed (WYA).\nFigma component library that cut design and development time up to 3\u00d7 (Swordfish).\nUser paths shortened 3\u20135\u00d7 on AppSec.Hub.\nAppSec.Track: zero to MVP in four months, 10+ deployments in the first year.\nAibolit e-commerce redesign: order values 2\u201310\u00d7.'],
+      [/appsec ?\.?track/i,
+       'Took AppSec.Track from zero to MVP in four months. First sale went to one of Russia\u2019s largest banks; 10+ deployments followed in the first year.'],
+      [/swordfish|appsec|devsecops|dev ?2 ?dev|security|sast|vulnerab/i,
+       'Product Designer at Swordfish Security (AppSec.Track & AppSec.Hub), Moscow, remote \u00b7 Nov 2021 \u2013 Feb 2024.\nTook AppSec.Track from zero to MVP in four months \u2014 first sale to one of Russia\u2019s largest banks, 10+ deployments in the first year.\nBuilt the Figma component library that cut design and development time up to 3\u00d7.\nOn AppSec.Hub, rebuilt the interface architecture and core flows: user paths shortened 3\u20135\u00d7, and advanced filtering sharply cut vulnerability triage time for SAST engineers.'],
+      [/\bwya\b|where you at|venue|london|tablet|push/i,
+       'Product Designer at WYA Venue Operations Center, Where You At \u00b7 London, remote \u00b7 Nov 2023 \u2013 Jun 2024.\nDesigned the B2B2C side of the venue operations product; built an interactive UI kit that roughly doubled design-to-development speed.\nConnected the product\u2019s two sides: event publishing from the venue\u2019s operations web app straight into the visitor mobile app, where guests invite friends and share their plans.\nShipped the tablet version, opening a market segment the product hadn\u2019t reached, and designed crowd management through push notifications.'],
+      [/traderadar|trade radar|moex|terminal|trading|fintech|\bchat\b|profile|calculator/i,
+       'Product Designer at TradeRadar, the MOEX trading terminal \u00b7 Moscow, remote \u00b7 Jul 2024 \u2013 present.\nRedesigned the terminal\u2019s chat in six weeks: new UI, mobile version, broadcasts, favorites, group chats, and an Owner/Admin/Member role model built to Russian financial-correspondence law. MAU grew from 300 to 680 in the four months after release.\nDesigned the user profile flow from scratch \u2014 completion went from 4% to 57% in the first month and 82% the following quarter.\nAudited the legacy design system, reworked the token architecture, and is rebuilding it end to end with Claude Code and the Figma CLI: 17 components published, more in progress.\nAlso shipped: a SPOT/SWAP profit calculator, transaction report export, analyst report uploads, and a unified trading-results widget.'],
+      [/freelance|side practice|\bnda\b|aibolit|nlmk|media holding|e-?commerce|recruit/i,
+       'Freelance Product Designer since May 2019 \u2014 ongoing side practice: a content-lifecycle platform for Russia\u2019s largest media holding (under NDA), an e-commerce redesign for Aibolit that grew order values 2\u201310\u00d7, and a recruitment portal for NLMK.'],
+      [/ai[- ]native|\bai\b|claude|\bmcp\b|agent|llm|machine[- ]readable/i,
+       'A design system that is machine-readable end to end \u2014 tokens, rules, components, docs, and agent context \u2014 usable for prototyping right away and exported to Storybook and a Git repo. At TradeRadar it is being rebuilt with Claude Code and the Figma CLI: 17 components published in two months. Skills: Claude Code, MCP, agent context engineering.'],
+      [/design system|token|component|library|ui kit|storybook/i,
+       'At TradeRadar: audited the legacy design system, rethought and wrote down its foundations to cover mobile as well as web, reworked the token architecture, and is rebuilding the system end to end with Claude Code and the Figma CLI \u2014 17 components published in two months, alongside product work. Everything is machine-readable and exported to Storybook and a Git repo.\nAt Swordfish: the Figma component library that cut design and development time up to 3\u00d7.\nAt WYA: an interactive UI kit that roughly doubled design-to-development speed.'],
+      [/tool|stack|skill|figma|software|webflow|jira|\bgit\b/i,
+       'Design systems & token architecture \u00b7 Figma (variables, slots, modes, Plugin API) \u00b7 Claude Code, MCP, agent context engineering \u00b7 Prototyping \u00b7 UX research \u00b7 Storybook \u00b7 Webflow \u00b7 Git \u00b7 Jira.'],
+      [/prototyp|\bcode\b|coding/i,
+       'Yes \u2014 prototyping is in the skill set, and the TradeRadar design system is machine-readable and usable for prototyping right away, exported to Storybook and a Git repo.'],
+      [/research|user interview|discovery/i,
+       'Yes \u2014 UX research is in the skill set, and every product is designed end to end: research, flows, UI.'],
+      [/remote|relocat|office|on-?site|work from/i,
+       'Yes. TradeRadar (Moscow) and WYA (London) were both remote roles; he is based in Bangkok.'],
+      [/educat|degree|universit|study|studied|school|course|linguist|bang bang/i,
+       'BA Linguistics \u2014 Moscow Open University of Nataly Nesterova, 2004.\nBang Bang Education \u2014 UI/UX Digital Product Designer, 2021 \u00b7 Web Designer, 2020.'],
+      [/where is|based|locat|live|city|country|bangkok|timezone/i,
+       'Bangkok. Recent roles \u2014 TradeRadar (Moscow) and WYA (London) \u2014 were remote.'],
+      [/end[- ]to[- ]end/i,
+       'Research, flows, UI \u2014 the whole product, plus the design systems and AI workflows that keep it consistent.'],
+      [/current|right now|present|today|latest|now\b/i,
+       'Product Designer at TradeRadar, the MOEX trading terminal \u2014 Moscow, remote, since July 2024.'],
+      [/years|experience|how long|\byoe\b|senior/i,
+       'Seven years in fintech and DevSecOps enterprise B2B. Freelance product design since May 2019; in-house product roles since November 2021.'],
+      [/compan|\bwork(ed)?\b|employer|career|history|clients|projects|portfolio|cases?\b/i,
+       'TradeRadar, MOEX trading terminal \u2014 Jul 2024 \u2013 present.\nWYA Venue Operations Center, Where You At (London) \u2014 Nov 2023 \u2013 Jun 2024.\nSwordfish Security, AppSec.Track & AppSec.Hub \u2014 Nov 2021 \u2013 Feb 2024.\nFreelance Product Designer \u2014 May 2019 \u2013 present.'],
+      [/what does anton|what do you do|who is|who are|about anton|tell me about anton|introduce|what is anton|his role|his job|position|title/i,
+       'Anton Dubovik \u2014 Senior Product Designer. Seven years in fintech and DevSecOps enterprise B2B: designs complex products end to end \u2014 research, flows, UI \u2014 and builds the design systems and AI workflows that keep them consistent.'],
+      [/^\s*(hi|hello|hey|yo|good (morning|afternoon|evening))\b/i,
+       'Hi. Ask anything that is in Anton\u2019s CV \u2014 experience, companies, metrics, design systems, tools, education, contacts.']
+    ];
+    const NOT_IN_CV = 'That isn\u2019t in the CV. Ask about experience, companies, metrics, design systems, tools, education or contacts.';
+    /* ---------- Russian: every line below is taken from AntonD_CV_Aug_26_ru.pdf; a Cyrillic question gets these ---------- */
+    const KB_RU = [
+      [/резюме|\bcv\b|\bpdf\b/i,
+       `Вот резюме (англ.): <a href="${CV_URL}" target="_blank" rel="noopener">AntonD_CV_Aug_26_eng.pdf</a>`],
+      [/контакт|связат|почт|e-?mail|телеграм|telegram|linkedin|телефон|позвон|написать|наня|нанима/i,
+       'doobec101@gmail.com \u00b7 Telegram <a href="https://t.me/doob101" target="_blank" rel="noopener">@doob101</a> \u00b7 <a href="https://www.linkedin.com/in/anton-dubovik-nodesign" target="_blank" rel="noopener">in/anton-dubovik-nodesign</a> \u00b7 +7 930 276-31-73 \u00b7 nodesign.webflow.io'],
+      [/метрик|цифр|результат|показател|kpi|рост|эффект|достижен/i,
+       'MAU чата 300 \u2192 680 за четыре месяца после релиза.\nЗаполненных профилей 4% \u2192 57% в первый месяц, 82% в следующий квартал.\n17 компонентов дизайн-системы опубликовано за два месяца \u2014 в параллель с продуктовой работой.\nИнтерактивный UI kit, примерно вдвое ускоривший путь от дизайна до разработки (WYA).\nБиблиотека компонентов в Figma, сократившая время дизайна и разработки до трёх раз (Swordfish).\nПути пользователя в AppSec.Hub сократились в 3\u20135 раз.\nAppSec.Track: с нуля до MVP за четыре месяца, больше 10 внедрений за первый год.\nE-commerce-редизайн «Айболита»: чеки выросли в 2\u201310 раз.'],
+      [/appsec ?\.?track/i,
+       'Довёл AppSec.Track с нуля до MVP за четыре месяца. Первая продажа \u2014 одному из крупнейших банков России; за первый год \u2014 больше 10 внедрений.'],
+      [/swordfish|appsec|devsecops|dev ?2 ?dev|безопасност|sast|уязвим/i,
+       'Product Designer в Swordfish Security (AppSec.Track и AppSec.Hub), Москва, удалённо \u00b7 ноябрь 2021 \u2013 февраль 2024.\nДовёл AppSec.Track с нуля до MVP за четыре месяца \u2014 первая продажа одному из крупнейших банков России, за первый год больше 10 внедрений.\nСобрал библиотеку компонентов в Figma, сократившую время дизайна и разработки до трёх раз.\nВ AppSec.Hub перестроил архитектуру интерфейса и ключевые флоу: пути пользователя сократились в 3\u20135 раз, а продвинутая фильтрация резко ускорила триаж уязвимостей для SAST-инженеров.'],
+      [/\bwya\b|where you at|заведен|лондон|планшет|push|пуш/i,
+       'Product Designer в WYA Venue Operations Center, Where You At \u00b7 Лондон, удалённо \u00b7 ноябрь 2023 \u2013 июнь 2024.\nПроектировал B2B2C-часть продукта для управления заведениями; собрал интерактивный UI kit, примерно вдвое ускоривший путь от дизайна до разработки.\nСвязал две стороны продукта: публикация афиши событий из рабочего веб-приложения заведения прямо в мобильное приложение посетителей \u2014 с приглашением друзей и расшариванием планов.\nВыпустил планшетную версию, открывшую продукту недоступный ранее сегмент рынка, и спроектировал управление потоками гостей через push-уведомления.'],
+      [/traderadar|trade radar|трейдрадар|moex|биржа|мосбирж|терминал|трейдинг|финтех|\bчат|профил|калькулятор/i,
+       'Product Designer в TradeRadar, торговом терминале MOEX \u00b7 Москва, удалённо \u00b7 июль 2024 \u2013 настоящее время.\nПереработал чат терминала за шесть недель: новый UI, мобильная версия, рассылки, избранное, групповые чаты и ролевая модель Владелец/Админ/Участник в соответствии с ФЗ о финансовой переписке. MAU вырос с 300 до 680 за четыре месяца после релиза.\nРазработал флоу работы с профилем пользователя с нуля \u2014 было заполнено лишь 4% профилей, стало 57% в первый месяц и 82% в следующий квартал.\nПровёл аудит легаси-системы, переделал архитектуру токенов и пересобирает дизайн-систему целиком на Claude Code и Figma CLI: опубликовано 17 компонентов, ещё несколько в работе.\nЕщё из выпущенного: калькулятор прибыли по SPOT/SWAP, выгрузка отчётов по сделкам, загрузка аналитических отчётов и единый виджет итогов торгов.'],
+      [/фриланс|freelance|\bnda\b|айболит|aibolit|нлмк|nlmk|медиахолдинг|e-?commerce|портал найма/i,
+       'Freelance Product Designer с мая 2019 \u2014 параллельная практика: платформа жизненного цикла контента для крупнейшего медиахолдинга России (под NDA), e-commerce-редизайн «Айболита», поднявший чеки в 2\u201310 раз, и портал найма для НЛМК.'],
+      [/ai[- ]native|\bai\b|\bии\b|claude|\bmcp\b|агент|llm|машиночита|нейросет/i,
+       'Дизайн-система, в которой всё машиночитаемое \u2014 токены, правила, компоненты, документация и контекст для агентов: сразу пригодно для прототипирования, выгружается в Storybook и Git-репозиторий. В TradeRadar она пересобирается на Claude Code и Figma CLI: 17 компонентов за два месяца. Навыки: Claude Code, MCP, контекст-инжиниринг для агентов.'],
+      [/дизайн-? ?систем|токен|компонент|библиотек|ui kit|storybook/i,
+       'В TradeRadar: провёл аудит легаси-системы, переосмыслил и записал основы дизайн-системы \u2014 с учётом не только веба, но и мобильных платформ, \u2014 переделал архитектуру токенов и пересобирает систему целиком на Claude Code и Figma CLI: 17 компонентов за два месяца в параллель с продуктовой работой. Всё машиночитаемое, выгружается в Storybook и Git-репозиторий.\nВ Swordfish: библиотека компонентов в Figma, сократившая время дизайна и разработки до трёх раз.\nВ WYA: интерактивный UI kit, примерно вдвое ускоривший путь от дизайна до разработки.'],
+      [/инструмент|стек|навык|figma|фигм|софт|webflow|jira|\bgit\b/i,
+       'Дизайн-системы и архитектура токенов \u00b7 Figma (variables, slots, modes, Plugin API) \u00b7 Claude Code, MCP, контекст-инжиниринг для агентов \u00b7 Прототипирование \u00b7 UX-исследования \u00b7 Storybook \u00b7 Webflow \u00b7 Git \u00b7 Jira.'],
+      [/прототип|\bкод|верст|програм/i,
+       'Да \u2014 прототипирование входит в навыки, а дизайн-система TradeRadar машиночитаемая и сразу пригодна для прототипирования, выгружается в Storybook и Git-репозиторий.'],
+      [/исследован|ресерч|research|интервью|discovery/i,
+       'Да \u2014 UX-исследования входят в навыки, а каждый продукт проектируется целиком: исследования, флоу, интерфейс.'],
+      [/удал[её]н|remote|релокац|переезд|офис/i,
+       'Да. TradeRadar (Москва) и WYA (Лондон) \u2014 удалённые роли.'],
+      [/образован|учил|универ|диплом|бакалавр|курс|лингвист|bang bang/i,
+       'Бакалавр лингвистики \u2014 Московский открытый университет Натальи Нестеровой, 2004.\nBang Bang Education \u2014 UI/UX-дизайнер цифровых продуктов, 2021 \u00b7 Веб-дизайнер, 2020.'],
+      [/где (он )?(жив|наход|базир)|город|стран|москв|бангкок|часов/i,
+       'Москва. Последние роли \u2014 TradeRadar и WYA (Лондон) \u2014 удалённые.'],
+      [/целиком|end[- ]to[- ]end|от и до|полн(ый|ого) цикл/i,
+       'Исследования, флоу, интерфейс \u2014 продукт целиком, плюс дизайн-системы и AI-пайплайны, которые держат его консистентным.'],
+      [/сейчас|текущ|настоящее|последн|где работает/i,
+       'Product Designer в TradeRadar, торговом терминале MOEX \u2014 Москва, удалённо, с июля 2024.'],
+      [/лет опыта|сколько лет|стаж|опыт|yoe|senior|сеньор/i,
+       'Семь лет в финтех- и DevSecOps-продуктах enterprise B2B. Фриланс \u2014 с мая 2019, продуктовые роли в штате \u2014 с ноября 2021.'],
+      [/компани|работал|карьер|клиент|проект|портфолио|кейс/i,
+       'TradeRadar, торговый терминал MOEX \u2014 июль 2024 \u2013 настоящее время.\nWYA Venue Operations Center, Where You At (Лондон) \u2014 ноябрь 2023 \u2013 июнь 2024.\nSwordfish Security, AppSec.Track и AppSec.Hub \u2014 ноябрь 2021 \u2013 февраль 2024.\nFreelance Product Designer \u2014 май 2019 \u2013 настоящее время.'],
+      [/чем занима|кто (такой|он)|что (он )?делает|расскажи|про антона|об антоне|должност|\bроль/i,
+       'Антон Дубовик \u2014 Senior Product Designer. Семь лет в финтех- и DevSecOps-продуктах enterprise B2B: проектирует сложные продукты целиком \u2014 исследования, флоу, интерфейс \u2014 и строит дизайн-системы и AI-пайплайны, которые держат их консистентными.'],
+      [/^\s*(привет|здравствуй|здравствуйте|хай|добр(ый|ое) (день|вечер|утро))/i,
+       'Привет. Спрашивайте что угодно из резюме Антона \u2014 опыт, компании, метрики, дизайн-системы, инструменты, образование, контакты.']
+    ];
+    const NOT_IN_CV_RU = 'Этого нет в резюме. Спросите про опыт, компании, метрики, дизайн-системы, инструменты, образование или контакты.';
+    const isRussian = (q) => /[а-яё]/i.test(q);
+    const answer = (q) => {
+      const ru = isRussian(q);
+      const hit = (ru ? KB_RU : KB).find(([re]) => re.test(q));
+      return hit ? hit[1] : (ru ? NOT_IN_CV_RU : NOT_IN_CV);
+    };
+    window.nodesignAnswer = answer; // try it in the console
+
+    /* ---------- chat mode ---------- */
+    const thread = document.getElementById('thread');
+    const branches = document.getElementById('branches');
+    const plateWrap = document.querySelector('.plate-wrap');
+    const heroCopy = document.querySelector('.hero-copy');
+    // the thread needs to clear the docked composer, whatever its height
+    const fitComposer = () => root.style.setProperty('--composer-h', plateWrap.offsetHeight + 'px');
+    new ResizeObserver(fitComposer).observe(plateWrap);
+    fitComposer();
+
+    /* the headline flies between the hero and the header, resolving into the new phrase on the way */
+    const chatTitle = document.getElementById('chatTitle');
+    const h1 = document.querySelector('h1');
+    const uiRoot = document.querySelector('.ui');
+    const headingSize = () => parseFloat(getComputedStyle(h1).fontSize);
+    const titleSize = () => parseFloat(getComputedStyle(chatTitle).fontSize);
+    const flyText = (from, to, text, s0, s1, done) => {
+      const scale = parseFloat(token('--ui-scale')) || 1;
+      const fly = document.createElement('div'); fly.className = 'fly-title'; fly.setAttribute('aria-hidden', 'true');
+      fly.textContent = buildFrame([text], 0)[0];
+      uiRoot.appendChild(fly);
+      const w = fly.offsetWidth, h = fly.offsetHeight;
+      const fromCx = (from.left + from.width / 2) / scale, fromCy = (from.top + from.height / 2) / scale;
+      const toCx = (to.left + to.width / 2) / scale, toCy = (to.top + to.height / 2) / scale;
+      fly.style.left = (fromCx - w / 2) + 'px'; fly.style.top = (fromCy - h / 2) + 'px';
+      fly.style.transition = 'none'; fly.style.transform = `translate(0, 0) scale(${s0})`;
+      fly.getBoundingClientRect();
+      fly.style.transition = ''; fly.style.transform = `translate(${toCx - fromCx}px, ${toCy - fromCy}px) scale(${s1})`;
+      const total = text.length, step = revealStep(total, 400); let r = 0;
+      const tick = setInterval(() => { r += step; fly.textContent = buildFrame([text], r)[0]; if (r >= total) { clearInterval(tick); fly.textContent = text; } }, SCR.tick);
+      let ended = false;
+      const finish = () => { if (ended) return; ended = true; clearInterval(tick); fly.remove(); if (done) done(); };
+      fly.addEventListener('transitionend', finish, { once: true });
+      setTimeout(finish, 600);
+    };
+    const flies = () => !reduced.matches && !phone();
+
+    const enterChat = () => {
+      if (document.body.classList.contains('is-chat')) return;
+      const from = plateWrap.getBoundingClientRect();
+      const h1From = h1.getBoundingClientRect();
+      if (flies()) h1.style.visibility = 'hidden';
+      document.body.classList.add('is-chat');
+      fitComposer();
+      const land = () => { chatTitle.classList.add('is-on'); chatTitle.tabIndex = 0; chatTitle.scramble.start(); };
+      if (reduced.matches) { land(); return; }
+      // composer: FLIP from the centre to its dock
+      const to = plateWrap.getBoundingClientRect();
+      const scale = parseFloat(token('--ui-scale')) || 1;
+      plateWrap.style.transition = 'none';
+      plateWrap.style.translate = `${(from.left - to.left) / scale}px ${(from.top - to.top) / scale}px`;
+      plateWrap.getBoundingClientRect();
+      plateWrap.style.transition = `translate var(--dur-chat) var(--ease-out)`;
+      plateWrap.style.translate = '0 0';
+      const settle = () => { plateWrap.style.transition = ''; plateWrap.style.translate = ''; };
+      plateWrap.addEventListener('transitionend', settle, { once: true });
+      setTimeout(settle, 600);   // in case the tab is hidden and the transition never runs
+      // headline: flies up into the header, shrinking to label size, and becomes the chat title
+      if (flies()) flyText(h1From, chatTitle.getBoundingClientRect(), JSON.parse(chatTitle.dataset.phrases)[0], 1, titleSize() / headingSize(), land);
+      else land();
+    };
+    chatTitle.addEventListener('click', () => exitChat());
+    const exitChat = () => {
+      const titleFrom = chatTitle.getBoundingClientRect();
+      chatTitle.scramble.stop(); chatTitle.classList.remove('is-on'); chatTitle.tabIndex = -1;
+      document.body.classList.remove('is-chat');
+      thread.textContent = ''; branches.querySelectorAll('.branch').forEach(b => b.remove());
+      scrollTo(0, 0);
+      if (!flies()) { h1.style.visibility = ''; return; }
+      // and back: the header title flies down and grows into the headline again
+      h1.style.visibility = 'hidden';
+      const current = h1.querySelector('.sr-only').textContent;
+      flyText(titleFrom, h1.getBoundingClientRect(), current, titleSize() / headingSize(), 1, () => { h1.style.visibility = ''; });
+    };
+
+    const addMsg = (cls, html, asText) => {
+      const el = document.createElement('div'); el.className = 'msg ' + cls;
+      if (asText) el.textContent = html; else el.innerHTML = html;
+      thread.appendChild(el); return el;
+    };
+    const timeNow = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const COPY_ICON = '<svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><rect x="3.5" y="3.5" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.1"/><path d="M7.5 3.5V2.7A1.2 1.2 0 0 0 6.3 1.5H2.7A1.2 1.2 0 0 0 1.5 2.7v3.6a1.2 1.2 0 0 0 1.2 1.2h.8" stroke="currentColor" stroke-width="1.1"/></svg>';
+    const addAnswer = (html) => {
+      const el = addMsg('msg-a', `<div class="text">${html}</div><div class="meta"><span class="time">${timeNow()}</span><button type="button" class="copy quiet">${COPY_ICON}<span>copy</span></button></div>`);
+      const btn = el.querySelector('.copy'), label = btn.querySelector('span');
+      btn.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(el.querySelector('.text').innerText); label.textContent = 'copied'; }
+        catch (err) {   // clipboard blocked → select the answer so ⌘C / Ctrl+C works
+          const range = document.createRange(); range.selectNodeContents(el.querySelector('.text'));
+          const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+          label.textContent = 'selected';
+        }
+        setTimeout(() => { label.textContent = 'copy'; }, 1500);
+      });
+      return el;
+    };
+    const convos = [];                                   // { q, target, el }
+    const flashQuestion = (el) => {                      // the question replays the link hover
+      el.classList.add('is-hot');
+      if (!reduced.matches) {
+        const text = el.dataset.text || (el.dataset.text = el.textContent);
+        const total = text.length, step = revealStep(total, 420); let r = 0;
+        el.textContent = buildFrame([text], 0)[0];
+        const t = setInterval(() => { r += step; el.textContent = buildFrame([text], r)[0]; if (r >= total) { clearInterval(t); el.textContent = text; } }, SCR.tick);
+      }
+      setTimeout(() => el.classList.remove('is-hot'), 1200);
+    };
+    const selectBranch = (i) => {
+      convos.forEach((c, k) => c.el.classList.toggle('is-active', k === i));
+      const target = convos[i].target;
+      thread.scrollTo({ top: target.offsetTop - parseFloat(getComputedStyle(thread).paddingTop), behavior: reduced.matches ? 'auto' : 'smooth' });
+      flashQuestion(target);
+    };
+    const makeBranch = (q, i) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'branch quiet'; b.title = q;
+      const sp = document.createElement('span'); sp.textContent = q; b.appendChild(sp); initScrambleText(sp);
+      b.dataset.index = i; return b;
+    };
+    const addBranch = (q, target) => {
+      const i = convos.length;
+      const el = makeBranch(q, i); el.classList.add('is-active');
+      el.addEventListener('click', () => selectBranch(i));
+      convos.forEach(c => c.el.classList.remove('is-active'));
+      convos.push({ q, target, el });
+      branches.appendChild(el); branches.scrollTop = branches.scrollHeight;
+    };
+    const scrollToEnd = () => thread.scrollTo({ top: thread.scrollHeight, behavior: reduced.matches ? 'auto' : 'smooth' });
+
+    /* ---------- not in the CV → ask Anton ----------
+       ASK_ENDPOINT is the relay in nodesign-ask/ (see nodesign-ask/README.md). While it is empty,
+       "ask Anton" opens Telegram with the question as a draft instead. */
+    const ASK_ENDPOINT = '';
+    const TG_URL = 'https://t.me/doob101';
+    const ASK_POLL_MS = 4000, ASK_TIMEOUT_MS = 15 * 60 * 1000;
+    const T = {
+      ru: { tg: 'Написать в Telegram', ask: 'Спросить у Антона',
+            status: ['Антон получил сообщение', 'Антон думает над ответом', 'Антон печатает'],
+            sentTg: 'Вопрос открыт в Telegram — Антон ответит там.',
+            timeout: 'Антон пока не ответил — напишите ему в Telegram.', fail: 'Не удалось отправить — напишите в Telegram.' },
+      en: { tg: 'Write on Telegram', ask: 'Ask Anton',
+            status: ['Anton got your message', 'Anton is thinking', 'Anton is typing'],
+            sentTg: 'The question is open in Telegram — Anton will answer there.',
+            timeout: 'Anton has not answered yet — write to him on Telegram.', fail: 'Could not send — write on Telegram instead.' }
+    };
+    const escapeHtml = (t) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const tgDraft = (q) => `${TG_URL}?text=${encodeURIComponent(q)}`;
+    // status line: same colour and size as a question, cycling its phrases like the headline
+    const addStatus = (phrases) => {
+      const el = document.createElement('div');
+      el.className = 'msg msg-q msg-status'; el.setAttribute('data-scramble-heading', ''); el.dataset.autoplay = 'false'; el.dataset.holdMs = '4000';
+      el.dataset.phrases = JSON.stringify(phrases);
+      el.innerHTML = `<span class="sr-only">${escapeHtml(phrases[0])}</span><span aria-hidden="true" data-scramble-live><span class="block">${escapeHtml(phrases[0])}</span></span>`;
+      thread.appendChild(el); initScrambleHeading(el); el.scramble.start();
+      return el;
+    };
+    const askAnton = async (q, lang, row) => {
+      const t = T[lang];
+      row.remove();                                            // the choice is made — the buttons go
+      if (!ASK_ENDPOINT) {                                      // no relay yet: hand over to Telegram with a draft
+        open(tgDraft(q), '_blank', 'noopener');
+        addMsg('msg-q', t.sentTg, true); scrollToEnd(); return;
+      }
+      const status = addStatus(t.status); scrollToEnd();
+      const done = (html) => { status.scramble.stop(); status.remove(); if (!document.body.classList.contains('is-chat')) return; addAnswer(html); scrollToEnd(); };
+      try {
+        const res = await fetch(ASK_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, lang }) });
+        if (!res.ok) throw new Error(res.status);
+        const { id } = await res.json();
+        const started = Date.now();
+        const poll = async () => {
+          if (Date.now() - started > ASK_TIMEOUT_MS) { done(`${escapeHtml(t.timeout)}<div class="ask-row"><a class="ask-btn" href="${tgDraft(q)}" target="_blank" rel="noopener">${t.tg}</a></div>`); return; }
+          try {
+            const r = await fetch(`${ASK_ENDPOINT}?id=${encodeURIComponent(id)}`);
+            const data = r.ok ? await r.json() : null;
+            if (data && data.status === 'answered') { done(escapeHtml(data.answer)); return; }
+          } catch (e) {}
+          setTimeout(poll, ASK_POLL_MS);
+        };
+        setTimeout(poll, ASK_POLL_MS);
+      } catch (e) {
+        done(`${escapeHtml(t.fail)}<div class="ask-row"><a class="ask-btn" href="${tgDraft(q)}" target="_blank" rel="noopener">${t.tg}</a></div>`);
+      }
+    };
+    const addNotInCv = (q, lang) => {
+      const t = T[lang];
+      const el = addAnswer(`${lang === 'ru' ? NOT_IN_CV_RU : NOT_IN_CV}<div class="ask-row"><a class="ask-btn" href="${tgDraft(q)}" target="_blank" rel="noopener">${t.tg}</a><button type="button" class="ask-btn ask-btn--primary">${t.ask}</button></div>`);
+      const row = el.querySelector('.ask-row');
+      row.querySelector('.ask-btn--primary').addEventListener('click', () => askAnton(q, lang, row));
+      return el;
+    };
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = ta.value.trim(); if (!q) return;
+      ta.value = ''; sync(); ta.focus();
+      enterChat();
+      const qEl = addMsg('msg-q', q, true);
+      addBranch(q, qEl);
+      const typing = addMsg('msg-a typing', '<i></i><i></i><i></i>');
+      scrollToEnd();
+      setTimeout(() => {
+        typing.remove();
+        const a = answer(q);
+        if (a === NOT_IN_CV || a === NOT_IN_CV_RU) addNotInCv(q, isRussian(q) ? 'ru' : 'en'); else addAnswer(a);
+        scrollToEnd();
+      }, reduced.matches ? 0 : 650);
+    });
+    // Escape with an empty field leaves the chat and brings the hero back
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.body.classList.contains('is-chat') && !ta.value) exitChat();
+    });
+    sync();
+
+    // placeholder cycles real scenarios, blur in / blur out
+    let phEl = phText;                       // the element currently on screen (each cycle swaps it)
+    const nextScenario = () => {
+      si = (si + 1) % scenarios.length;
+      const fresh = phEl.cloneNode(false);
+      fresh.textContent = scenarios[si];
+      phEl.replaceWith(fresh);
+      phEl = fresh;
+      fresh.addEventListener('animationend', nextScenario);
+    };
+    phEl.addEventListener('animationend', nextScenario);
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+
+    /* ---------- mobile menu ---------- */
+    const menu = document.getElementById('menu');
+    const menuBtn = menu.querySelector('.menu-btn');
+    const menuPlate = menu.querySelector('.menu-plate');
+    const menuList = menu.querySelector('.menu-list-wrap');
+    const menuConvos = document.getElementById('menuConvos');
+    // the chat panel keeps one gutter below the plate, whatever size it is
+    const fitMenu = () => root.style.setProperty('--menu-h', (menuPlate.getBoundingClientRect().height / (parseFloat(token('--ui-scale')) || 1)) + 'px');
+    new ResizeObserver(fitMenu).observe(menuPlate);
+    menuPlate.addEventListener('transitionend', fitMenu);
+    fitMenu();
+
+    const closeMenu = () => { menu.classList.remove('is-open'); menuBtn.setAttribute('aria-expanded', 'false'); menuList.inert = true; };
+    // full sheet → burger: animate width / height down, then clear the inline sizes
+    const collapseFull = (after) => {
+      menuPlate.style.width = '40px'; menuPlate.style.height = '40px';
+      let done = false;
+      const finish = () => {
+        if (done) return; done = true;
+        menuPlate.style.width = ''; menuPlate.style.height = '';
+        menu.classList.remove('is-full'); closeMenu();
+        if (after) after();
+      };
+      menuPlate.addEventListener('transitionend', finish, { once: true });
+      setTimeout(finish, 400);
+    };
+    const setMenu = (open) => {
+      if (!open && menu.classList.contains('is-full')) { collapseFull(); return; }
+      menu.classList.toggle('is-open', open); menuBtn.setAttribute('aria-expanded', String(open)); menuList.inert = !open;
+    };
+    // menu → full-screen sheet with the conversation list
+    const renderConvos = () => {
+      menuConvos.querySelectorAll('.branch, .empty').forEach(n => n.remove());
+      if (!convos.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'No conversations yet'; menuConvos.appendChild(e); return; }
+      convos.forEach((c, i) => {
+        const b = makeBranch(c.q, i); b.classList.toggle('is-active', c.el.classList.contains('is-active'));
+        b.addEventListener('click', () => {
+          menuConvos.querySelectorAll('.branch').forEach((x, k) => x.classList.toggle('is-active', k === i));
+          collapseFull(() => selectBranch(i));      // card folds like the menu, then the chat jumps to the question
+        });
+        menuConvos.appendChild(b);
+      });
+    };
+    const openFull = () => {
+      renderConvos();
+      const w0 = menuPlate.offsetWidth, h0 = menuPlate.offsetHeight;
+      menuPlate.style.transition = 'none'; menuPlate.style.width = w0 + 'px'; menuPlate.style.height = h0 + 'px';
+      menuPlate.getBoundingClientRect();
+      menuPlate.style.transition = '';
+      menu.classList.add('is-full');
+      const scale = parseFloat(token('--ui-scale')) || 1, g = parseFloat(token('--page-gutter'));
+      menuPlate.style.width = (innerWidth / scale - 2 * g) + 'px';
+      menuPlate.style.height = (innerHeight / scale - 2 * g) + 'px';
+    };
+    document.getElementById('convosBtn').addEventListener('click', openFull);
+    closeMenu();
+    menuBtn.addEventListener('click', () => setMenu(!menu.classList.contains('is-open')));
+    document.addEventListener('click', (e) => { if (!e.target.closest('#menu')) setMenu(false); });
+  })();
+  </script>
+</body>
+</html>

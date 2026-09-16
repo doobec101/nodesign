@@ -1,0 +1,13 @@
+{
+  "name": "portfolio2026",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5190",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.1.6"
+  }
+}
