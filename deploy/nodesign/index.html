@@ -95,6 +95,8 @@
       --dur-panel: .3s;
       --dur-chat: .45s;          /* hero → chat choreography */
       --dur-placeholder: 3.4s;
+      --ease-back: cubic-bezier(.175, .885, .32, 1.275);   /* overshoots, then settles */
+      --dur-theme-icon: .4s;
     }
 
     [data-theme="dark"] {
@@ -191,13 +193,31 @@
     .logo, .nav a { color: var(--color-link); }
     .header-right { display: flex; align-items: center; gap: 15px; }
     .theme-toggle {
+      position: relative;
       display: flex; align-items: center; justify-content: center;
       width: 22px; height: 22px; margin: -4px 0;
       color: var(--color-ink);
     }
-    .theme-toggle svg { display: block; }
-    .theme-toggle .ic-sun, [data-theme="dark"] .theme-toggle .ic-moon { display: none; }
-    [data-theme="dark"] .theme-toggle .ic-sun { display: block; }
+    /* sun ⇄ moon: both icons sit in the same spot, the one leaving turns 90° clockwise
+       and shrinks out while the one arriving comes in from -90°, same back-out curve */
+    .theme-toggle svg {
+      position: absolute; inset: 0; margin: auto;
+      display: block; transform-origin: 50% 50%;
+    }
+    .theme-toggle .ic-sun { opacity: 0; transform: rotate(-90deg) scale(.5); }
+    [data-theme="dark"] .theme-toggle .ic-sun { opacity: 1; transform: none; }
+    [data-theme="dark"] .theme-toggle .ic-moon { opacity: 0; transform: rotate(90deg) scale(.5); }
+    @keyframes theme-icon-in  { from { opacity: 0; transform: rotate(-90deg) scale(.5); } to { opacity: 1; transform: none; } }
+    @keyframes theme-icon-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: rotate(90deg) scale(.5); } }
+    /* .theme-anim lands on the first click, so nothing spins on page load */
+    .theme-anim .theme-toggle .ic-moon,
+    .theme-anim[data-theme="dark"] .theme-toggle .ic-sun {
+      animation: theme-icon-in var(--dur-theme-icon) var(--ease-back) both;
+    }
+    .theme-anim .theme-toggle .ic-sun,
+    .theme-anim[data-theme="dark"] .theme-toggle .ic-moon {
+      animation: theme-icon-out var(--dur-theme-icon) var(--ease-back) both;
+    }
     .nav { display: flex; align-items: center; gap: 10px; }
     .cta {
       display: inline-flex; align-items: center; gap: 20px;
@@ -304,18 +324,29 @@
       position: fixed; left: var(--page-gutter); right: var(--page-gutter);
       top: calc(var(--header-h) + 20px); bottom: calc(var(--composer-h, 50px) + var(--page-gutter) * 2);
       width: auto; max-width: var(--container-media); margin: 0 auto;
-      flex-direction: column; gap: 18px;
-      padding: var(--plate-field-pt) var(--plate-pad-x);
-      overflow-y: auto; overscroll-behavior: contain;
-      scrollbar-width: thin; scrollbar-color: var(--color-ink-faint) transparent;
-      font-size: var(--text-label); line-height: 1.4;
+      overflow: hidden;
       /* the same glass as the composer */
       border-radius: var(--radius-plate);
       background: var(--color-surface);
       -webkit-backdrop-filter: blur(var(--blur-surface));
       backdrop-filter: blur(var(--blur-surface));
     }
-    body.is-chat .thread { display: flex; animation: panel-in var(--dur-chat) var(--ease-out) both; animation-delay: .12s; }
+    body.is-chat .thread { display: block; animation: panel-in var(--dur-chat) var(--ease-out) both; animation-delay: .12s; }
+    /* the log scrolls inside the panel; the close button stays in its corner */
+    .thread-log {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; gap: 18px;
+      padding: var(--plate-field-pt) var(--plate-pad-x);
+      overflow-y: auto; overscroll-behavior: contain;
+      scrollbar-width: thin; scrollbar-color: var(--color-ink-faint) transparent;
+      font-size: var(--text-label); line-height: 1.4;
+    }
+    .thread-log .msg:first-child { padding-right: 34px; }   /* the first question keeps clear of the close button */
+    .thread-close {
+      position: absolute; top: 5px; right: 5px; z-index: 1;   /* icon centred on the first line of the log */
+      display: flex; width: 40px; height: 40px; align-items: center; justify-content: center;
+    }
+    .thread-close svg { display: block; }
     @keyframes panel-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
     /* the headline's landing spot: header centre, on the Email line; cycles its phrases like the hero */
@@ -425,8 +456,47 @@
       color: var(--color-ink-muted);
     }
 
+    /* ---------- work: one case per screen below the hero ---------- */
+    .work {
+      min-height: calc(100lvh / var(--ui-scale));
+      display: flex; align-items: center; justify-content: center;
+      /* the fixed header stays clear of the card; so do the footer and the docked composer */
+      padding: var(--header-h) var(--page-gutter) calc(var(--page-gutter) * 3 + var(--footer-h, 12px) + var(--composer-h, 50px));
+    }
+    .work-inner {
+      width: 100%; max-width: var(--container-content);
+      display: flex; flex-direction: column; align-items: center;
+      gap: 23px;
+    }
+    .work-copy {
+      width: 100%;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 20px; text-align: center;
+    }
+    /* the preview: a 4:3 plate, as wide as the content, but never taller than the screen under the copy */
+    .work-media {
+      width: min(100%, calc((100lvh / var(--ui-scale) - 280px) * 4 / 3));
+      aspect-ratio: 4 / 3;
+      margin: 0; position: relative; overflow: hidden;
+      border-radius: var(--radius-plate);
+      background: var(--color-surface);
+      -webkit-backdrop-filter: blur(var(--blur-surface));
+      backdrop-filter: blur(var(--blur-surface));
+    }
+    .work-media .lottie { position: absolute; inset: 0; }
+    .work-media svg { display: block; width: 100%; height: 100%; }
+    body.is-chat .work { display: none; }
+
     /* ---------- plate ---------- */
     .plate-wrap { width: 100%; max-width: var(--container-media); position: relative; }
+    /* the composer follows the reader: scrolled out at the top, it docks above the footer (the slot keeps its place in the hero) */
+    .plate-slot { width: 100%; }
+    .plate-wrap.is-docked {
+      position: fixed; left: var(--page-gutter); right: var(--page-gutter);
+      bottom: calc(var(--page-gutter) * 2 + var(--footer-h, 12px));
+      width: auto; margin: 0 auto; z-index: 40;
+      animation: panel-in var(--dur-chat) var(--ease-out) both;
+    }
     .plate {
       position: relative; width: 100%;
       display: flex; flex-direction: column; overflow: hidden;
@@ -528,9 +598,10 @@
     @media (prefers-reduced-motion: reduce) {
       .reveal { opacity: 1; filter: none; transition: none; }
       .placeholder-text { animation: none; opacity: 1; }
-      .msg, .branch, .typing i { animation: none; opacity: 1; }
+      .msg, .branch, .typing i, .plate-wrap.is-docked { animation: none; opacity: 1; }
       .hero-copy, .site-footer, .plate-wrap { transition: none; }
       .cta svg, .quiet, .plate, .plate-field, .placeholder, .plate-tools, .menu-plate, .menu-list { transition: none; }
+      .theme-toggle svg { animation: none; }
     }
   </style>
 </head>
@@ -708,8 +779,14 @@
           </div>
         </div>
 
-        <div class="thread" id="thread" role="log" aria-live="polite" aria-label="Answers"></div>
+        <div class="thread" id="threadPanel">
+          <button type="button" class="thread-close quiet" id="chatClose" aria-label="Close chat">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 2.5L11.5 11.5M11.5 2.5L2.5 11.5" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
+          <div class="thread-log" id="thread" role="log" aria-live="polite" aria-label="Answers"></div>
+        </div>
 
+        <div class="plate-slot" id="plateSlot" hidden aria-hidden="true"></div>
         <div class="plate-wrap reveal" data-reveal>
           <form class="plate" id="composer" novalidate>
             <div class="plate-field" id="field">
@@ -729,6 +806,24 @@
         </div>
       </div>
     </main>
+
+    <!-- second screen · MOEX chat redesign: the Jitter preview (media/moex-chat.js), loaded when the screen comes near -->
+    <section class="work" id="work" aria-labelledby="workTitle">
+      <div class="work-inner">
+        <div class="work-copy">
+          <h2 class="display" id="workTitle" data-scramble-heading>
+            <span class="sr-only">MOEX Chat Redesign</span>
+            <span aria-hidden="true" data-scramble-live><span class="block">MOEX Chat Redesign</span></span>
+          </h2>
+          <div class="reveal" data-reveal="scroll">
+            <p class="lede">Full redesign done within 6 weeks. DAU from ~80 to more than 560 at peak</p>
+          </div>
+        </div>
+        <figure class="work-media reveal" data-reveal="scroll">
+          <div class="lottie" id="moexPreview" data-lottie="media/moex-chat.js" data-media="moex-chat" role="img" aria-label="MOEX chat redesign: mobile screens of the chat list, a conversation and its settings"></div>
+        </figure>
+      </div>
+    </section>
 
     <!-- z 40 · conversation branches (chat mode, ≥ xl) -->
     <aside class="branches" id="branches" aria-label="Conversation"><div class="cap">Conversation</div></aside>
@@ -751,8 +846,35 @@
     const qs = new URLSearchParams(location.search).get('theme');
     let saved = null; try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
     setTheme(qs === 'dark' || qs === 'light' ? qs : (saved === 'dark' || saved === 'light' ? saved : 'light'), false);
+    /* toggle click: a 4 ms noise burst through a bandpass filter — synthesised, no audio file */
+    let audioCtx = null;
+    const playToggle = () => {
+      if (reduced.matches) return;
+      try {
+        audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const ctx = audioCtx, len = Math.round(ctx.sampleRate * 0.004);
+        const buf = ctx.createBuffer(1, len, ctx.sampleRate), data = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 18);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 3200 * (1 + (Math.random() - 0.5) * 0.1);
+        filter.Q.value = 7;
+        const amp = ctx.createGain();
+        amp.gain.value = 1.8;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(filter).connect(amp).connect(ctx.destination);
+        src.start(ctx.currentTime);
+        src.onended = () => { src.disconnect(); filter.disconnect(); amp.disconnect(); };
+      } catch (e) {}
+    };
     document.querySelectorAll('[data-theme-toggle]').forEach(b =>
-      b.addEventListener('click', () => setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark', true)));
+      b.addEventListener('click', () => {
+        playToggle();
+        root.classList.add('theme-anim');
+        setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark', true);
+      }));
 
     /* ---------- tokens → JS ---------- */
     const token = (name) => getComputedStyle(root).getPropertyValue(name).trim();
@@ -766,7 +888,7 @@
     const phone = () => innerWidth < 768;
 
     /* ---------- reveal on load ---------- */
-    const reveals = [...document.querySelectorAll('.reveal')];
+    const reveals = [...document.querySelectorAll('.reveal:not([data-reveal="scroll"])')];
     const revealAll = () => {
       reveals.forEach((el, i) => {
         const delay = 90 * i;
@@ -1063,6 +1185,59 @@
     new ResizeObserver(fitComposer).observe(plateWrap);
     fitComposer();
 
+    /* FLIP the composer from where it was (a rect) to where it sits now */
+    const flipPlate = (from) => {
+      const to = plateWrap.getBoundingClientRect();
+      const scale = parseFloat(token('--ui-scale')) || 1;
+      plateWrap.style.transition = 'none';
+      plateWrap.style.translate = `${(from.left - to.left) / scale}px ${(from.top - to.top) / scale}px`;
+      plateWrap.getBoundingClientRect();
+      plateWrap.style.transition = `translate var(--dur-chat) var(--ease-out)`;
+      plateWrap.style.translate = '0 0';
+      const settle = (e) => {
+        if (e && e.target !== plateWrap) return;           // a child's transition is not ours
+        plateWrap.removeEventListener('transitionend', settle);
+        plateWrap.style.transition = ''; plateWrap.style.translate = '';
+      };
+      plateWrap.addEventListener('transitionend', settle);
+      setTimeout(settle, 600);   // in case the tab is hidden and the transition never runs
+    };
+
+    /* ---------- the composer follows the reader: once its place has scrolled out at the top, half a second later
+       it rises above the footer; scrolled back, it flies home into its slot ---------- */
+    const slot = document.getElementById('plateSlot');
+    const footer = document.querySelector('.site-footer');
+    const fitFooter = () => root.style.setProperty('--footer-h', footer.offsetHeight + 'px');
+    new ResizeObserver(fitFooter).observe(footer);
+    fitFooter();
+    let docked = false, dockTimer = null, plateTick = false;
+    const dock = (from) => {                                  // with a rect: FLIP from there instead of rising in
+      dockTimer = null;
+      if (docked || document.body.classList.contains('is-chat')) return;
+      plateWrap.style.transition = ''; plateWrap.style.translate = '';   // cancel a flight home still in the air
+      plateWrap.style.animation = from ? 'none' : '';
+      slot.style.height = plateWrap.offsetHeight + 'px'; slot.hidden = false;
+      plateWrap.classList.add('is-docked'); docked = true;
+      if (from && !reduced.matches) flipPlate(from);
+    };
+    const undock = (animate) => {
+      if (!docked) return;
+      const from = plateWrap.getBoundingClientRect();
+      plateWrap.classList.remove('is-docked'); plateWrap.style.animation = '';
+      slot.hidden = true; slot.style.height = ''; docked = false;
+      if (animate && !reduced.matches) flipPlate(from);
+    };
+    const watchPlate = () => {
+      plateTick = false;
+      if (document.body.classList.contains('is-chat')) return;
+      const r = (docked ? slot : plateWrap).getBoundingClientRect();
+      if (!docked && r.bottom < 0) { if (!dockTimer) dockTimer = setTimeout(dock, 500); }   // fully out at the top
+      else { clearTimeout(dockTimer); dockTimer = null; if (docked && r.top >= 0) undock(true); }   // its place is back in view
+    };
+    addEventListener('scroll', () => { if (!plateTick) { plateTick = true; requestAnimationFrame(watchPlate); } }, { passive: true });
+    addEventListener('resize', () => { if (docked) slot.style.height = plateWrap.offsetHeight + 'px'; watchPlate(); });
+    watchPlate();
+
     /* the headline flies between the hero and the header, resolving into the new phrase on the way */
     const chatTitle = document.getElementById('chatTitle');
     const h1 = document.querySelector('h1');
@@ -1090,37 +1265,37 @@
     };
     const flies = () => !reduced.matches && !phone();
 
+    let chatFromY = 0;                                   // where the page was when the chat opened
     const enterChat = () => {
       if (document.body.classList.contains('is-chat')) return;
-      const from = plateWrap.getBoundingClientRect();
+      clearTimeout(dockTimer); dockTimer = null;
+      chatFromY = scrollY;
+      const from = plateWrap.getBoundingClientRect();   // the centre of the hero, or the dock above the footer
+      undock(false);
       const h1From = h1.getBoundingClientRect();
       if (flies()) h1.style.visibility = 'hidden';
       document.body.classList.add('is-chat');
       fitComposer();
       const land = () => { chatTitle.classList.add('is-on'); chatTitle.tabIndex = 0; chatTitle.scramble.start(); };
       if (reduced.matches) { land(); return; }
-      // composer: FLIP from the centre to its dock
-      const to = plateWrap.getBoundingClientRect();
-      const scale = parseFloat(token('--ui-scale')) || 1;
-      plateWrap.style.transition = 'none';
-      plateWrap.style.translate = `${(from.left - to.left) / scale}px ${(from.top - to.top) / scale}px`;
-      plateWrap.getBoundingClientRect();
-      plateWrap.style.transition = `translate var(--dur-chat) var(--ease-out)`;
-      plateWrap.style.translate = '0 0';
-      const settle = () => { plateWrap.style.transition = ''; plateWrap.style.translate = ''; };
-      plateWrap.addEventListener('transitionend', settle, { once: true });
-      setTimeout(settle, 600);   // in case the tab is hidden and the transition never runs
+      flipPlate(from);   // composer: FLIP from where it was to the chat dock
       // headline: flies up into the header, shrinking to label size, and becomes the chat title
       if (flies()) flyText(h1From, chatTitle.getBoundingClientRect(), JSON.parse(chatTitle.dataset.phrases)[0], 1, titleSize() / headingSize(), land);
       else land();
     };
     chatTitle.addEventListener('click', () => exitChat());
+    document.getElementById('chatClose').addEventListener('click', () => exitChat());
     const exitChat = () => {
       const titleFrom = chatTitle.getBoundingClientRect();
+      const plateFrom = plateWrap.getBoundingClientRect();
       chatTitle.scramble.stop(); chatTitle.classList.remove('is-on'); chatTitle.tabIndex = -1;
       document.body.classList.remove('is-chat');
       thread.textContent = ''; branches.querySelectorAll('.branch').forEach(b => b.remove());
-      scrollTo(0, 0);
+      scrollTo(0, chatFromY);                            // back to where the chat was opened
+      // the composer flies from the chat dock back to its place — or, if that place is off screen, to its dock above the footer
+      if (plateWrap.getBoundingClientRect().bottom < 0) dock(plateFrom);
+      else if (!reduced.matches) flipPlate(plateFrom);
+      if (!phone() && matchMedia('(hover: hover)').matches) ta.focus({ preventScroll: true });
       if (!flies()) { h1.style.visibility = ''; return; }
       // and back: the header title flies down and grows into the headline again
       h1.style.visibility = 'hidden';
@@ -1279,6 +1454,41 @@
     phEl.addEventListener('animationend', nextScenario);
 
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+
+    /* ---------- second screen: reveals on scroll; the preview is a Lottie, fetched one screen ahead ---------- */
+    const scrollReveals = [...document.querySelectorAll('.reveal[data-reveal="scroll"]')];
+    const scrollRevealIO = new IntersectionObserver((entries) => entries.forEach(({ isIntersecting, target }) => {
+      if (!isIntersecting) return;
+      scrollRevealIO.unobserve(target);
+      const delay = 90 * scrollReveals.indexOf(target);
+      setTimeout(() => target.setAttribute('data-reveal', 'shown'), delay);
+      setTimeout(() => target.setAttribute('data-reveal', 'settled'), delay + 600);
+    }), { threshold: .2 });
+    scrollReveals.forEach(el => scrollRevealIO.observe(el));
+
+    const LOTTIE_LIB = 'https://cdn.jsdelivr.net/npm/lottie-web@5.13.0/build/player/lottie.min.js';
+    const loadScript = (src) => new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
+    document.querySelectorAll('[data-lottie]').forEach((box) => {
+      let anim = null, visible = false, loading = false;
+      // plays only while on screen; reduced motion shows the first frame
+      const sync = () => { if (!anim) return; if (visible && !reduced.matches) anim.play(); else anim.pause(); };
+      const load = async () => {
+        if (loading) return; loading = true;
+        try {
+          if (!window.lottie) await loadScript(LOTTIE_LIB);
+          await loadScript(box.dataset.lottie);              // a classic script: it loads from file:// as well
+          anim = lottie.loadAnimation({
+            container: box, renderer: 'svg', loop: true, autoplay: false,
+            animationData: window.NODESIGN_MEDIA[box.dataset.media],
+            rendererSettings: { preserveAspectRatio: 'xMidYMid slice', progressiveLoad: true }
+          });
+          anim.addEventListener('DOMLoaded', () => { anim.goToAndStop(0, true); sync(); });
+        } catch (e) { loading = false; }                     // offline: the plate stays empty, the next approach retries
+      };
+      new IntersectionObserver(([e]) => { if (e.isIntersecting) load(); }, { rootMargin: '100% 0px' }).observe(box);
+      new IntersectionObserver(([e]) => { visible = e.isIntersecting; sync(); }, { threshold: .1 }).observe(box);
+      reduced.addEventListener('change', sync);
+    });
 
     /* ---------- mobile menu ---------- */
     const menu = document.getElementById('menu');
