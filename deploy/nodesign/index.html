@@ -97,6 +97,7 @@
       --dur-placeholder: 3.4s;
       --ease-back: cubic-bezier(.175, .885, .32, 1.275);   /* overshoots, then settles */
       --dur-theme-icon: .4s;
+      --dur-press: .1s;
     }
 
     [data-theme="dark"] {
@@ -198,6 +199,11 @@
       width: 22px; height: 22px; margin: -4px 0;
       color: var(--color-ink);
     }
+    /* press: the whole button dips, .96 here reads like the reference's .98 on its 40px button */
+    .theme-toggle.quiet {
+      transition: color var(--dur-quiet) var(--ease-standard), transform var(--dur-press) var(--ease-standard);
+    }
+    .theme-toggle:active { transform: scale(.96); }
     /* sun ⇄ moon: both icons sit in the same spot, the one leaving turns 90° clockwise
        and shrinks out while the one arriving comes in from -90°, same back-out curve */
     .theme-toggle svg {
@@ -601,6 +607,7 @@
       .msg, .branch, .typing i, .plate-wrap.is-docked { animation: none; opacity: 1; }
       .hero-copy, .site-footer, .plate-wrap { transition: none; }
       .cta svg, .quiet, .plate, .plate-field, .placeholder, .plate-tools, .menu-plate, .menu-list { transition: none; }
+      .theme-toggle.quiet { transition: none; }
       .theme-toggle svg { animation: none; }
     }
   </style>
