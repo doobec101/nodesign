@@ -491,6 +491,18 @@
     }
     .work-media .lottie { position: absolute; inset: 0; }
     .work-media svg { display: block; width: 100%; height: 100%; }
+    /* the 3D case: a wider plate for the laptop, and the flat shot under the stage until WebGL has the device */
+    .work-media.is-stage {
+      width: min(100%, calc((100lvh / var(--ui-scale) - 280px) * 16 / 10));
+      aspect-ratio: 16 / 10;
+    }
+    .stage-shot, .stage-3d { position: absolute; inset: 0; transition: opacity var(--dur-chat) var(--ease-out); }
+    .stage-shot { width: 100%; height: 100%; object-fit: cover; }
+    /* three.js sizes its canvas in px from the measured rect, so the UI zoom would blow it up by --ui-scale:
+       undo the zoom here and the stage's own px are screen px again */
+    .stage-3d { opacity: 0; zoom: calc(1 / var(--ui-scale)); }
+    .work-media.is-live .stage-shot { opacity: 0; }
+    .work-media.is-live .stage-3d { opacity: 1; }
     body.is-chat .work { display: none; }
 
     /* ---------- plate ---------- */
@@ -828,6 +840,27 @@
         </div>
         <figure class="work-media reveal" data-reveal="scroll">
           <div class="lottie" id="moexPreview" data-lottie="media/moex-chat.js" data-media="moex-chat" role="img" aria-label="MOEX chat redesign: mobile screens of the chat list, a conversation and its settings"></div>
+        </figure>
+      </div>
+    </section>
+
+    <!-- third screen · TradeRadar: the case shot lives on a rigged 3D MacBook (media/macbook-3d.js),
+         fetched one screen ahead and only where it can run — everywhere else the flat shot is the case -->
+    <section class="work" id="traderadar" aria-labelledby="radarTitle">
+      <div class="work-inner">
+        <div class="work-copy">
+          <h2 class="display" id="radarTitle" data-scramble-heading>
+            <span class="sr-only">TradeRadar Terminal</span>
+            <span aria-hidden="true" data-scramble-live><span class="block">TradeRadar Terminal</span></span>
+          </h2>
+          <div class="reveal" data-reveal="scroll">
+            <p class="lede">The MOEX terminal desk: yield curves, best prices, the order journal and the trading chat on one workspace</p>
+          </div>
+        </div>
+        <figure class="work-media is-stage reveal" data-reveal="scroll">
+          <img class="stage-shot" src="media/trade-radar.webp" width="2000" height="1250" loading="lazy" decoding="async"
+               alt="TradeRadar terminal: yield curves, OTC derivative price reports, the order journal, the trading chat and a news feed on one workspace">
+          <div class="stage-3d" data-macbook="media/trade-radar.webp" data-macbook-model="media/macbook-rigged.glb" aria-hidden="true"></div>
         </figure>
       </div>
     </section>
@@ -1496,6 +1529,32 @@
       new IntersectionObserver(([e]) => { visible = e.isIntersecting; sync(); }, { threshold: .1 }).observe(box);
       reduced.addEventListener('change', sync);
     });
+
+    /* ---------- third screen: the rigged MacBook is a React island (media/macbook-3d.js, built from
+       media/macbook-3d.src.jsx). Two megabytes of three.js are only worth it where they will run, so the
+       page asks first — a phone, reduced motion or no WebGL2 keeps the flat shot and fetches nothing ---------- */
+    const stages = [...document.querySelectorAll('[data-macbook]')];
+    if (stages.length) {
+      let webgl2 = null;                         // probed once: a throwaway context is a real context
+      const capable = () => {
+        if (reduced.matches || phone()) return false;
+        if (webgl2 === null) try {
+          const gl = document.createElement('canvas').getContext('webgl2');
+          webgl2 = Boolean(gl);
+          gl && gl.getExtension('WEBGL_lose_context') && gl.getExtension('WEBGL_lose_context').loseContext();
+        } catch (e) { webgl2 = false; }
+        return webgl2;
+      };
+      let loading = false;
+      const stageIO = new IntersectionObserver((entries) => {
+        if (!entries.some(e => e.isIntersecting) || loading || !capable()) return;
+        loading = true;
+        import('./media/macbook-3d.js')
+          .then(() => stageIO.disconnect())
+          .catch(() => { loading = false; });      // offline: the shot stays, the next approach retries
+      }, { rootMargin: '100% 0px' });
+      stages.forEach(el => stageIO.observe(el));
+    }
 
     /* ---------- mobile menu ---------- */
     const menu = document.getElementById('menu');
