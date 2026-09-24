@@ -18,13 +18,14 @@ import { Macbook, MacbookStage, clamp01, easeInOut, lerp, ramp, smoothDamp, useC
    stage camera (z 6, fov 32) and the plate's 16 / 10 — re-fit them if either ever changes. */
 const FIT = [0.84, 1.60];        // scale
 const SEAT = [0.42, -0.18];      // world y: the screen's middle ends up on the frame's middle
-const TILT = [0.10, 0.025];      // pointer yaw, radians — dived in, there is no room for the full swing
+const TILT = [0.05, 0.012];      // pointer nod, radians — dived in, there is no room for the full swing
+
 
 /* One anodised grey for the whole body. The model paints its parts from a baked 128 x 4 palette
    and a couple of flat swatch maps, which is what reads as a different colour per part — so a map
    that is a swatch counts as paint, not art, and the colour takes over. Printed parts (keycap
    legends, ports, grilles) keep their maps; the rubber feet and the glossy trim keep their finish. */
-const BODY = '#9c9ca3';
+const BODY = '#c9cad1';
 
 /* a palette strip, or a map that carries no structure, is a colour rather than artwork: the model's
    swatch maps land near 0-35 on this scale and its real art (keycap legends, grilles) well above 150 */
@@ -73,10 +74,12 @@ addEventListener('pointermove', (e) => {
   pointer.x = e.clientX; pointer.y = e.clientY; pointer.seen = true;
 }, { passive: true });
 
-/* the lid follows the plate up the screen: shut as it enters from below, open once it sits centred */
+/* The lid follows the plate up the screen: shut as it enters from below, fully open by the time the
+   plate's middle is two thirds of the way up. It finishes early on purpose — wherever the reader
+   stops, the case is square to the camera rather than caught mid-swing. */
 const scrollOpen = (el) => {
   const r = el.getBoundingClientRect();
-  return clamp01((innerHeight - (r.top + r.height / 2)) / (innerHeight / 2));
+  return clamp01((innerHeight - (r.top + r.height / 2)) / (innerHeight * 0.34));
 };
 
 const preset = () => (document.documentElement.getAttribute('data-theme') === 'dark' ? 'studio-dark' : 'studio-light');
@@ -86,14 +89,14 @@ const Device = ({ host, screen, modelSrc, onLoad }) => {
   const group = useRef(null);
   const device = useRef(null);
   const lid = useRef(0), lidVel = useRef(0);
-  const tilt = useRef({ x: 0, y: 0 });
+  const tilt = useRef(0);
   const frame = useRef({ open: 0, brightness: 0 });
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 1 / 30);           // a backgrounded tab must not throw the lid open in one step
     const follow = 1 - Math.exp(-dt * 6);         // frame-rate independent ease for the tilt
 
-    lid.current = smoothDamp(lid.current, scrollOpen(host), lidVel, 0.35, dt, 3);
+    lid.current = smoothDamp(lid.current, scrollOpen(host), lidVel, 0.28, dt, 3);   // lands square rather than drifting in
     const open = easeInOut(lid.current);
     frame.current.open = open;
     frame.current.brightness = ramp(lid.current, 0.45, 0.95);   // the screen wakes behind the rising lid
@@ -102,14 +105,13 @@ const Device = ({ host, screen, modelSrc, onLoad }) => {
     if (!g) return;
 
     const r = host.getBoundingClientRect();
-    const toward = (v, centre, span) => (pointer.seen ? Math.max(-1, Math.min(1, (v - centre) / span)) : 0);
-    tilt.current.x = lerp(tilt.current.x, toward(pointer.x, r.left + r.width / 2, r.width * 0.9), follow);
-    tilt.current.y = lerp(tilt.current.y, toward(pointer.y, r.top + r.height / 2, r.height * 0.9), follow);
+    const centre = r.top + r.height / 2;
+    const near = pointer.seen ? Math.max(-1, Math.min(1, (pointer.y - centre) / (r.height * 0.9))) : 0;
+    tilt.current = lerp(tilt.current, near, follow);
 
-    const swing = lerp(TILT[0], TILT[1], open);
-    g.rotation.y = tilt.current.x * swing + (1 - open) * 0.18;   // turned a little while shut, square once open
-    g.rotation.x = tilt.current.y * swing * 0.5;
-    g.position.y = lerp(SEAT[0], SEAT[1], open);
+    g.rotation.x = tilt.current * lerp(TILT[0], TILT[1], open);   // it nods with the cursor and never turns:
+    g.position.y = lerp(SEAT[0], SEAT[1], open);                  // the case stays square to the camera
+
     g.scale.setScalar(lerp(FIT[0], FIT[1], open) * Math.min(1, state.viewport.aspect / 1.6));   // hold the fit if the plate is ever narrower
   });
 
