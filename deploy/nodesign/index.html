@@ -1549,7 +1549,7 @@
       const stageIO = new IntersectionObserver((entries) => {
         if (!entries.some(e => e.isIntersecting) || loading || !capable()) return;
         loading = true;
-        import('./media/macbook-3d.js')
+        import('./media/macbook-3d.js?v=4')            // bump on every rebuild: caches must let go of the old bundle
           .then(() => stageIO.disconnect())
           .catch(() => { loading = false; });      // offline: the shot stays, the next approach retries
       }, { rootMargin: '100% 0px' });

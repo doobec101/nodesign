@@ -74,12 +74,13 @@ addEventListener('pointermove', (e) => {
   pointer.x = e.clientX; pointer.y = e.clientY; pointer.seen = true;
 }, { passive: true });
 
-/* The lid follows the plate up the screen: shut as it enters from below, fully open by the time the
-   plate's middle is two thirds of the way up. It finishes early on purpose — wherever the reader
-   stops, the case is square to the camera rather than caught mid-swing. */
+/* The lid follows the plate up the screen: shut as it enters from below, fully open as soon as the
+   plate's middle clears three quarters of the way up — while the plate is still arriving. It finishes
+   that early on purpose: anywhere the reader stops with the case actually in view, the screen stands
+   square to the camera instead of being caught mid-swing and leaning back. */
 const scrollOpen = (el) => {
   const r = el.getBoundingClientRect();
-  return clamp01((innerHeight - (r.top + r.height / 2)) / (innerHeight * 0.34));
+  return clamp01((innerHeight - (r.top + r.height / 2)) / (innerHeight * 0.24));
 };
 
 const preset = () => (document.documentElement.getAttribute('data-theme') === 'dark' ? 'studio-dark' : 'studio-light');

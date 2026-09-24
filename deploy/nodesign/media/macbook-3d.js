@@ -58444,7 +58444,7 @@ addEventListener("pointermove", (n) => {
 }, { passive: !0 });
 const xZ = (n) => {
   const e = n.getBoundingClientRect();
-  return am((innerHeight - (e.top + e.height / 2)) / (innerHeight * 0.34));
+  return am((innerHeight - (e.top + e.height / 2)) / (innerHeight * 0.24));
 }, rD = () => document.documentElement.getAttribute("data-theme") === "dark" ? "studio-dark" : "studio-light", SZ = ({ host: n, screen: e, modelSrc: t, onLoad: i }) => {
   const r = pe.useRef(null), s = pe.useRef(null), o = pe.useRef(0), u = pe.useRef(0), c = pe.useRef(0), f = pe.useRef({ open: 0, brightness: 0 });
   return J_((d, g) => {
