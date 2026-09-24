@@ -13,11 +13,58 @@ import { createRoot } from 'react-dom/client';
 import { useFrame } from '@react-three/fiber';
 import { Macbook, MacbookStage, clamp01, easeInOut, lerp, ramp, smoothDamp, useCapabilityGate } from 'rigged-macbook-3d';
 
-/* Fitted against the stage camera (z 6, fov 32) and the plate's 16 / 10: the open device fills
-   ~89% of the frame with room left for the tilt, and clears it at every lid angle. Re-fit both
-   numbers if the plate ratio or the camera ever changes. */
-const FIT = 0.84;
-const SEAT = [0.42, 0.28];       // world y, shut → open: the device settles as the lid comes up
+/* Each pair is shut → open, and the lid opening plays the whole move: the device arrives whole
+   in frame, then the camera dives in until the terminal nearly fills the plate. Fitted against the
+   stage camera (z 6, fov 32) and the plate's 16 / 10 — re-fit them if either ever changes. */
+const FIT = [0.84, 1.60];        // scale
+const SEAT = [0.42, -0.18];      // world y: the screen's middle ends up on the frame's middle
+const TILT = [0.10, 0.025];      // pointer yaw, radians — dived in, there is no room for the full swing
+
+/* One anodised grey for the whole body. The model paints its parts from a baked 128 x 4 palette
+   and a couple of flat swatch maps, which is what reads as a different colour per part — so a map
+   that is a swatch counts as paint, not art, and the colour takes over. Printed parts (keycap
+   legends, ports, grilles) keep their maps; the rubber feet and the glossy trim keep their finish. */
+const BODY = '#9c9ca3';
+
+/* a palette strip, or a map that carries no structure, is a colour rather than artwork: the model's
+   swatch maps land near 0-35 on this scale and its real art (keycap legends, grilles) well above 150 */
+const isSwatch = (map) => {
+  const img = map.image;
+  if (!img || !img.width) return false;
+  if (Math.min(img.width, img.height) <= 8) return true;
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 8;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, 8, 8);
+    const px = ctx.getImageData(0, 0, 8, 8).data;
+    let lo = 255, hi = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      const v = (px[i] + px[i + 1] + px[i + 2]) / 3;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+    return hi - lo < 60;
+  } catch (e) { return false; }            // an undecoded or tainted image: leave the material alone
+};
+
+const paintBody = (root) => {
+  const done = new Set();
+  root.traverse((o) => {
+    if (!o.isMesh || o.name === 'Screen') return;
+    (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => {
+      if (!m || done.has(m)) return;
+      done.add(m);
+      if (m.map ? !isSwatch(m.map) : (m.metalness < 0.9 || m.roughness < 0.4)) return;
+      m.map = null;
+      m.color.set(BODY);
+      /* the model's body is full metal, which mirrors the room and turns black on the dark stage;
+         half-metal at this roughness keeps the sheen and holds the same grey under either preset */
+      m.metalness = 0.55; m.roughness = 0.42; m.envMapIntensity = 1;
+      m.needsUpdate = true;
+    });
+  });
+};
 
 /* ---------- pointer: one listener for the whole page, read per frame ---------- */
 const pointer = { x: 0, y: 0, seen: false };
@@ -37,6 +84,7 @@ const preset = () => (document.documentElement.getAttribute('data-theme') === 'd
 /* ---------- the device: every beat is per-frame, nothing re-renders React ---------- */
 const Device = ({ host, screen, modelSrc, onLoad }) => {
   const group = useRef(null);
+  const device = useRef(null);
   const lid = useRef(0), lidVel = useRef(0);
   const tilt = useRef({ x: 0, y: 0 });
   const frame = useRef({ open: 0, brightness: 0 });
@@ -58,15 +106,22 @@ const Device = ({ host, screen, modelSrc, onLoad }) => {
     tilt.current.x = lerp(tilt.current.x, toward(pointer.x, r.left + r.width / 2, r.width * 0.9), follow);
     tilt.current.y = lerp(tilt.current.y, toward(pointer.y, r.top + r.height / 2, r.height * 0.9), follow);
 
-    g.rotation.y = tilt.current.x * 0.10 + (1 - open) * 0.18;   // turned a little while shut, square once open
-    g.rotation.x = tilt.current.y * 0.05;
+    const swing = lerp(TILT[0], TILT[1], open);
+    g.rotation.y = tilt.current.x * swing + (1 - open) * 0.18;   // turned a little while shut, square once open
+    g.rotation.x = tilt.current.y * swing * 0.5;
     g.position.y = lerp(SEAT[0], SEAT[1], open);
-    g.scale.setScalar(FIT * Math.min(1, state.viewport.aspect / 1.6));   // hold the fit if the plate is ever narrower
+    g.scale.setScalar(lerp(FIT[0], FIT[1], open) * Math.min(1, state.viewport.aspect / 1.6));   // hold the fit if the plate is ever narrower
   });
 
   return (
     <group ref={group}>
-      <Macbook screen={screen} modelSrc={modelSrc} frameDriver={() => frame.current} onLoad={onLoad} />
+      <Macbook
+        ref={device}
+        screen={screen}
+        modelSrc={modelSrc}
+        frameDriver={() => frame.current}
+        onLoad={() => { paintBody(device.current); onLoad(); }}
+      />
     </group>
   );
 };
