@@ -18,7 +18,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
 const OUT = join(ROOT, 'out');
 const [mode = 'beats', theme = 'dark', ...rest] = process.argv.slice(2);
-const FPS = 60, SUB = 4;
+const FPS = 60, SUB = 4, SHUTTER = 0.5;                     // 4 subframes per frame over a 180° shutter
 
 // Playwright from the project if it has it, else the global install (no new dependency for the site)
 const require = createRequire(import.meta.url);
@@ -109,8 +109,9 @@ if (mode === 'cues') {
   await browser.close();
   console.log(sheets.join('\n'));
 } else if (mode === 'segment') {
-  // one worker: frames [from, to) → tmix → an H.264 segment. Frame f's 4 subframes sit inside its own
-  // 1/60 s (offsets −3/8, −1/8, +1/8, +3/8 of a frame); t < 0 wraps, the page is periodic.
+  // one worker: frames [from, to) → tmix → an H.264 segment. A 180° shutter: frame f's 4 subframes cover the
+  // middle half of its 1/60 s (offsets −3/16, −1/16, +1/16, +3/16 of a frame), so fast zooms blur instead of
+  // strobing into four copies; t < 0 wraps, the page is periodic.
   const [from, to, index] = rest.map(Number);
   const { browser, page } = await open(theme);
   const cdp = await page.context().newCDPSession(page);
@@ -122,7 +123,7 @@ if (mode === 'cues') {
   const t0 = Date.now();
   for (let f = from; f < to; f++) {
     for (let s = 0; s < SUB; s++) {
-      await page.evaluate(t => window.seek(t), (f + (s - (SUB - 1) / 2) / SUB) / FPS);
+      await page.evaluate(t => window.seek(t), (f + SHUTTER * (s - (SUB - 1) / 2) / SUB) / FPS);
       const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true });
       if (!ff.stdin.write(Buffer.from(data, 'base64'))) await new Promise(r => ff.stdin.once('drain', r));
     }

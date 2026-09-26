@@ -5,7 +5,7 @@
 | Файл | Что это |
 |---|---|
 | `ds-promo.html` | всё в одном файле: разметка, `seek(t)`, шрифт Inter (400/500/600, OFL), данные бита и эквалайзера |
-| `renders/ds-promo-dark.mp4`, `renders/ds-promo-light.mp4` | 60 fps, motion blur (4 подкадра → `tmix`), звук |
+| `renders/ds-promo-dark.mp4`, `renders/ds-promo-light.mp4` | 60 fps, motion blur (4 подкадра на кадр, затвор 180°, `tmix`), звук |
 | `renders/ds-promo-audio.m4a` | микс: музыка + UI-звуки; его же играет превью |
 | `data/beats.json` | сетка бита, структура трека, окно лупа, эквалайзер 9 полос × 120 Гц |
 | `data/cues.json` | звуковые события, которые объявляет страница |
