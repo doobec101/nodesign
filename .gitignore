@@ -3,3 +3,7 @@ dist
 .DS_Store
 *.local
 figma-cli-main
+# motion: the raw track stays out of the repo (Mixkit licence), renders' intermediates too
+motion/audio/
+motion/out/
+__pycache__/
