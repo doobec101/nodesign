@@ -2,7 +2,7 @@
 """UI sounds for ds-promo, synthesized with numpy, placed by their measured peaks, mixed over the loop.
 
     node motion/tools/render.mjs cues > motion/data/cues.json
-    python3 motion/tools/sounds.py          # → motion/renders/ds-promo-audio.m4a (+ out/…wav)
+    python3 motion/tools/sounds.py          # → motion/renders/ds-promo-audio.m4a + .mp3 (+ out/…wav)
 
 - every sound is generated here (no samples to license): clicks, ticks, blinks, whooshes, chimes, and
   Karplus-Strong plucks for the promo's curves, tuned to the track's key (E minor: B4, G4, E4)
@@ -162,13 +162,15 @@ def main():
         f.writeframes((np.clip(out, -1, 1) * 32767).astype('<i2').tobytes())
     os.makedirs(os.path.join(ROOT, 'renders'), exist_ok=True)
     m4a = os.path.join(ROOT, 'renders', 'ds-promo-audio.m4a')
-    subprocess.run([ffmpeg(), '-y', '-v', 'error', '-i', wav, '-c:a', 'aac', '-b:a', '256k', m4a], check=True)
+    subprocess.run([ffmpeg(), '-y', '-v', 'error', '-i', wav, '-c:a', 'aac', '-b:a', '256k', m4a], check=True)   # muxed into the MP4s
+    mp3 = m4a[:-4] + '.mp3'                                                                                   # played by the page
+    subprocess.run([ffmpeg(), '-y', '-v', 'error', '-i', wav, '-c:a', 'libmp3lame', '-b:a', '256k', mp3], check=True)
     kinds = {}
     for t, k, p in report:
         kinds.setdefault(k, p)
     print(f'{len(report)} cues over {L:.2f} s; mix peak {peak:.2f}{" → normalised" if peak > 0.97 else ""}')
     print('measured peaks (ms after each sound starts):', ', '.join(f'{k} {v:.1f}' for k, v in kinds.items()))
-    print(wav); print(m4a)
+    print(wav); print(m4a); print(mp3)
 
 
 if __name__ == '__main__':

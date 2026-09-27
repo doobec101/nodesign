@@ -6,7 +6,7 @@
 |---|---|
 | `ds-promo.html` | всё в одном файле: разметка, `seek(t)`, шрифт Inter (400/500/600, OFL), данные бита и эквалайзера |
 | `renders/ds-promo-dark.mp4`, `renders/ds-promo-light.mp4` | 60 fps, motion blur (4 подкадра на кадр, затвор 180°, `tmix`), звук |
-| `renders/ds-promo-audio.m4a` | микс: музыка + UI-звуки; его же играет превью |
+| `renders/ds-promo-audio.m4a`, `.mp3` | микс: музыка + UI-звуки (m4a — в видео, mp3 играет страница) |
 | `data/beats.json` | сетка бита, структура трека, окно лупа, эквалайзер 9 полос × 120 Гц |
 | `data/cues.json` | звуковые события, которые объявляет страница |
 | `tools/` | `beatgrid.py` → `embed.py` → `sounds.py` → `render.mjs` |
@@ -38,7 +38,7 @@
 python3 motion/tools/beatgrid.py                         # data/beats.json
 python3 motion/tools/embed.py [путь/к/@fontsource/inter/files]   # данные (и шрифт) внутрь html
 node motion/tools/render.mjs cues > motion/data/cues.json
-python3 motion/tools/sounds.py                           # renders/ds-promo-audio.m4a
+python3 motion/tools/sounds.py                           # renders/ds-promo-audio.m4a + .mp3
 node motion/tools/render.mjs beats dark                  # кадр на каждую долю → out/beats-dark-*.jpg
 node motion/tools/render.mjs video dark 3                # renders/ds-promo-dark.mp4 (3 воркера)
 node motion/tools/render.mjs video light 3
