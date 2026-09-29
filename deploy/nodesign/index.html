@@ -479,18 +479,19 @@
       display: flex; flex-direction: column; align-items: center;
       gap: 20px; text-align: center;
     }
-    /* the preview: a 4:3 plate, as wide as the content, but never taller than the screen under the copy */
+    /* the preview: a 4:3 plate (square for square pieces), as wide as the content, but never taller than the screen under the copy */
     .work-media {
-      width: min(100%, calc((100lvh / var(--ui-scale) - 280px) * 4 / 3));
-      aspect-ratio: 4 / 3;
+      --media-ratio: 4 / 3;
+      width: min(100%, calc((100lvh / var(--ui-scale) - 280px) * var(--media-ratio)));
+      aspect-ratio: var(--media-ratio);
       margin: 0; position: relative; overflow: hidden;
       border-radius: var(--radius-plate);
       background: var(--color-surface);
       -webkit-backdrop-filter: blur(var(--blur-surface));
       backdrop-filter: blur(var(--blur-surface));
     }
-    .work-media .lottie { position: absolute; inset: 0; }
-    .work-media svg { display: block; width: 100%; height: 100%; }
+    .work-media.square { --media-ratio: 1; }
+    .work-media iframe { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; }
     body.is-chat .work { display: none; }
 
     /* ---------- plate ---------- */
@@ -814,20 +815,20 @@
       </div>
     </main>
 
-    <!-- second screen · MOEX chat redesign: the Jitter preview (media/moex-chat.js), loaded when the screen comes near -->
+    <!-- second screen · TR DS Atoms: the table loop (media/table-loop.html, a page of its own with sound), loaded when the screen comes near -->
     <section class="work" id="work" aria-labelledby="workTitle">
       <div class="work-inner">
         <div class="work-copy">
           <h2 class="display" id="workTitle" data-scramble-heading>
-            <span class="sr-only">MOEX Chat Redesign</span>
-            <span aria-hidden="true" data-scramble-live><span class="block">MOEX Chat Redesign</span></span>
+            <span class="sr-only">Trade Radar design system - Atoms</span>
+            <span aria-hidden="true" data-scramble-live><span class="block">Trade Radar design system - Atoms</span></span>
           </h2>
           <div class="reveal" data-reveal="scroll">
-            <p class="lede">Full redesign done within 6 weeks. DAU from ~80 to more than 560 at peak</p>
+            <p class="lede">0-1 AI build and readable design system in just 4 months. Design speed increased more than 40%</p>
           </div>
         </div>
-        <figure class="work-media reveal" data-reveal="scroll">
-          <div class="lottie" id="moexPreview" data-lottie="media/moex-chat.js" data-media="moex-chat" role="img" aria-label="MOEX chat redesign: mobile screens of the chat list, a conversation and its settings"></div>
+        <figure class="work-media square reveal" data-reveal="scroll">
+          <iframe data-src="media/table-loop.html" allow="autoplay" title="Trade Radar design system: a button grows into an instruments table built from the atoms"></iframe>
         </figure>
       </div>
     </section>
@@ -1462,7 +1463,7 @@
 
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
 
-    /* ---------- second screen: reveals on scroll; the preview is a Lottie, fetched one screen ahead ---------- */
+    /* ---------- second screen: reveals on scroll; the preview is a page in an iframe, loaded one screen ahead ---------- */
     const scrollReveals = [...document.querySelectorAll('.reveal[data-reveal="scroll"]')];
     const scrollRevealIO = new IntersectionObserver((entries) => entries.forEach(({ isIntersecting, target }) => {
       if (!isIntersecting) return;
@@ -1473,28 +1474,19 @@
     }), { threshold: .2 });
     scrollReveals.forEach(el => scrollRevealIO.observe(el));
 
-    const LOTTIE_LIB = 'https://cdn.jsdelivr.net/npm/lottie-web@5.13.0/build/player/lottie.min.js';
-    const loadScript = (src) => new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
-    document.querySelectorAll('[data-lottie]').forEach((box) => {
-      let anim = null, visible = false, loading = false;
-      // plays only while on screen; reduced motion shows the first frame
-      const sync = () => { if (!anim) return; if (visible && !reduced.matches) anim.play(); else anim.pause(); };
-      const load = async () => {
-        if (loading) return; loading = true;
-        try {
-          if (!window.lottie) await loadScript(LOTTIE_LIB);
-          await loadScript(box.dataset.lottie);              // a classic script: it loads from file:// as well
-          anim = lottie.loadAnimation({
-            container: box, renderer: 'svg', loop: true, autoplay: false,
-            animationData: window.NODESIGN_MEDIA[box.dataset.media],
-            rendererSettings: { preserveAspectRatio: 'xMidYMid slice', progressiveLoad: true }
-          });
-          anim.addEventListener('DOMLoaded', () => { anim.goToAndStop(0, true); sync(); });
-        } catch (e) { loading = false; }                     // offline: the plate stays empty, the next approach retries
-      };
-      new IntersectionObserver(([e]) => { if (e.isIntersecting) load(); }, { rootMargin: '100% 0px' }).observe(box);
-      new IntersectionObserver(([e]) => { visible = e.isIntersecting; sync(); }, { threshold: .1 }).observe(box);
-      reduced.addEventListener('change', sync);
+    // the table loop runs itself (reduced motion gets a still, sound is its own button); the site only hands it the theme:
+    // in the URL, again once it boots, and on every switch — postMessage works from file:// too
+    document.querySelectorAll('iframe[data-src]').forEach((frame) => {
+      const theme = () => root.getAttribute('data-theme');
+      const sendTheme = () => { if (frame.src) frame.contentWindow.postMessage({ type: 'table-loop', theme: theme() }, '*'); };
+      addEventListener('message', (e) => { if (e.source === frame.contentWindow && e.data && e.data.type === 'table-loop:state' && e.data.ready) sendTheme(); });
+      new MutationObserver(sendTheme).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+      const io = new IntersectionObserver(([e]) => {
+        if (!e.isIntersecting) return;
+        io.disconnect();
+        frame.src = `${frame.dataset.src}?theme=${theme()}`;
+      }, { rootMargin: '100% 0px' });
+      io.observe(frame);
     });
 
     /* ---------- mobile menu ---------- */
