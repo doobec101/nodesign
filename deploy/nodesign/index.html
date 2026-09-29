@@ -820,8 +820,8 @@
       <div class="work-inner">
         <div class="work-copy">
           <h2 class="display" id="workTitle" data-scramble-heading>
-            <span class="sr-only">Trade Radar design system - Atoms</span>
-            <span aria-hidden="true" data-scramble-live><span class="block">Trade Radar design system - Atoms</span></span>
+            <span class="sr-only">Trade Radar design system — Atoms</span>
+            <span aria-hidden="true" data-scramble-live><span class="block">Trade Radar design system&nbsp;— Atoms</span></span>
           </h2>
           <div class="reveal" data-reveal="scroll">
             <p class="lede">0-1 AI build and readable design system in just 4 months. Design speed increased more than 40%</p>
@@ -912,7 +912,7 @@
     const buildFrame = (lines, revealed) => {
       let n = 0;
       return lines.map(line => Array.from(line).map(ch => {
-        const out = (ch === ' ' || n < revealed) ? ch : SCR.chars[Math.random() * SCR.chars.length | 0];
+        const out = (ch === ' ' || ch === '\u00a0' || n < revealed) ? ch : SCR.chars[Math.random() * SCR.chars.length | 0];
         n += 1; return out;
       }).join(''));
     };
