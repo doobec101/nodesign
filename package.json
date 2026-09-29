@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5190",
+    "build": "rm -rf dist && mkdir dist && cp nodesign.html dist/index.html && cp -R media dist/media",
     "preview": "vite preview"
   },
   "devDependencies": {
