@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --port 5190",
     "live": "npx -y live-server --port=5191 --open=nodesign.html --watch=nodesign.html,media",
-    "build": "rm -rf dist && mkdir dist && cp nodesign.html dist/index.html && cp -R media dist/media",
+    "build": "rm -rf dist && mkdir dist && cp nodesign.html dist/index.html && cp -R media dist/media && cp og/og.png dist/og.png",
     "preview": "vite preview"
   },
   "devDependencies": {
