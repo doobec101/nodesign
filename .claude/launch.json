@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "--port", "5190"],
       "port": 5190
+    },
+    {
+      "name": "nodesign-live",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["-y", "live-server", "--port=5191", "--no-browser", "--watch=nodesign.html,media"],
+      "port": 5191
     }
   ]
 }
