@@ -7,9 +7,11 @@
     "dev": "vite --port 5190",
     "live": "npx -y live-server --port=5191 --open=nodesign.html --watch=nodesign.html,media",
     "build": "rm -rf dist && mkdir dist && cp nodesign.html dist/index.html && cp -R media dist/media && cp og/og.png dist/og.png",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "qa": "npm run build && node scripts/qa.mjs"
   },
   "devDependencies": {
+    "playwright": "^1.63.0",
     "vite": "^5.1.6"
   },
   "dependencies": {
