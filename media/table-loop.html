@@ -276,7 +276,7 @@ function glyphGeom(o, f, v, k, px, py) {
 }
 
 /* ═══ Content — the instruments table from TR DS - Atoms `Instruments table · Example` (21860:116012) ═══ */
-const TITLE = 'My instrument list 2';
+const TITLE = 'Instruments';
 const TABS = ['All', 'Favorites', 'Stocks', 'Currencies', 'Bonds'];
 const HEAD = ['Instrument', 'Ticker', 'ISIN', 'Trading mode', 'Currency'];
 const COLS = [44, 220, 292, 412, 516];                 // cell left edges; text sits 12 px in (cell padding space/0750)
@@ -320,7 +320,7 @@ function textW(str, ty) {
 }
 // The opening headline (TR/Display/L at 2×): it lands word by word above the "New Atoms" button and leaves on the
 // click that opens the widget. No captions: the parts name themselves.
-const HEADLINE = ['From', 'atoms', 'to', 'tables'];
+const HEADLINE = ['From', 'atoms', 'to', 'products'];
 const DD_ITEMS = ['OJSC MegaFon', 'PJSC Seligdar', 'PJSC Sberbank'];    // curve-promo-drop1 (ds-promo 17:6719)
 function measure() {
   M.title = textW(TITLE, TY.title);
@@ -486,28 +486,28 @@ function timeline() {
   shapeTo(B(4), R.prim, SP.collapse);                               // the label goes, the button closes onto its icon
   shapeTo(B(6), R.wid, SP.wide);                                    // the + opens the empty widget around itself
   shapeTo(B(31), R.prim, SP.collapse);                              // the table folds back into the +
-  shapeTo(B(32) + 0.15, R.na, SP.geom);                             // … which reopens as "New Atoms" on the stop
+  shapeTo(B(1) + 0.2, R.na, SP.snap);                                // … which dissolves on the stop; unseen, it is "New Atoms" again
 
   // the button's variant, one click each: Unfilled (no surface) → Outline (1 px inside) → Primary (filled)
-  T('fillA', 0).to(B(3), 1, SP.col).to(B(32) + 0.15, 0, SP.col);
+  T('fillA', 0).to(B(3), 1, SP.col).to(B(1) + 0.2, 0, SP.snap);
   CT('fill', 'Button/Fill/Primary/Default');
   // (the swaps at B6 and B31 + 0.5 happen under the + button's own surface, so the widget never flashes purple)
   TR.fill.to(B(6), 'Background/Level1', SP.snap).to(B(31) + 0.5, 'Button/Fill/Primary/Default', SP.snap);
   CT('stroke', 'Button/Stroke/Outline/Default');
   T('strokeA', 0).to(B(2), 1, SP.col).to(B(3), 0, SP.col);
   CT('ink', 'Button/Icon/Unfilled/Default');
-  TR.ink.to(B(2), 'Button/Icon/Outline/Default').to(B(3), 'Button/Icon/Primary/Default').to(B(32) + 0.15, 'Button/Icon/Unfilled/Default');
+  TR.ink.to(B(2), 'Button/Icon/Outline/Default').to(B(3), 'Button/Icon/Primary/Default').to(B(1) + 0.2, 'Button/Icon/Unfilled/Default', SP.snap);
   CT('naInk', 'Button/Text/Unfilled/Default');
-  TR.naInk.to(B(2), 'Button/Text/Outline/Default').to(B(3), 'Button/Text/Primary/Default').to(B(32) + 0.15, 'Button/Text/Unfilled/Default');
-  inOut('naT', [[B(32) + 0.2, B(4)]], SP.hlIn, spring(0.16, 1));
+  TR.naInk.to(B(2), 'Button/Text/Outline/Default').to(B(3), 'Button/Text/Primary/Default').to(B(1) + 0.2, 'Button/Text/Unfilled/Default', SP.snap);
+  inOut('naT', [[B(1) + 0.2, B(4)]], SP.snap, spring(0.16, 1));
   const press = T('press', 0);
   for (const b of [2, 3, 4]) press.to(B(b), 0.06, SP.press).to(B(b) + 0.085, 0, SP.release);
 
-  // the glyph: the eye (lashes up) closes, its lid flattens into the plus's bar and the stem grows; reversed on the stop
-  T('eyeO', 1).to(B(5), 0, spring(0.2, 1)).to(B(32) + 0.2, 1, spring(0.32, 0.92));
-  T('lashK', 1).to(B(5), 0, spring(0.12, 1)).to(B(32) + 0.3, 1, spring(0.3, 1));
-  T('eyeF', 0).to(B(5) + 0.1, 1, spring(0.3, 1)).to(B(32) + 0.08, 0, spring(0.22, 1));
-  T('plusV', 0).to(B(5) + 0.22, 1, spring(0.3, 0.88)).to(B(32), 0, spring(0.16, 1));
+  // the glyph: the eye (lashes up) closes, its lid flattens into the plus's bar and the stem grows; reset unseen after the stop
+  T('eyeO', 1).to(B(5), 0, spring(0.2, 1)).to(B(1) + 0.2, 1, SP.snap);
+  T('lashK', 1).to(B(5), 0, spring(0.12, 1)).to(B(1) + 0.2, 1, SP.snap);
+  T('eyeF', 0).to(B(5) + 0.1, 1, spring(0.3, 1)).to(B(1) + 0.2, 0, SP.snap);
+  T('plusV', 0).to(B(5) + 0.22, 1, spring(0.3, 0.88)).to(B(1) + 0.2, 0, SP.snap);
 
   // ── camera: frames each state; zoom-outs move with the shape, zoom-ins lag
   const cam = (F, fw = 0.62, fh = 0.44, cap = 7) => [F.cx, F.cy, Math.log(Math.min(cap, fw * W / F.w, fh * H / F.h))];
@@ -524,7 +524,7 @@ function timeline() {
   camTo(B(19), cam(R.badgeCam, 0.62, 0.44, 5.5), spring(0.7, 1));  // push in on the header: the PRO badge appears after the link
   camTo(B(21), cWid, SP.camOut);
   camTo(B(31), cPrim, SP.camIn);
-  camTo(B(32) + 0.15, cNa, spring(0.5, 1));
+  camTo(B(1) + 0.2, cNa, SP.snap);                                 // reframed unseen, between the + and the opener
 
   // ── the + button inside the header: the shape is its surface until the widget opens (B6) and after the fold (B31)
   T('primBg', 0).to(B(6), 1, SP.snap).to(B(31) + 0.5, 0, SP.snap);
@@ -600,7 +600,7 @@ function timeline() {
   });
   for (const n of ['fav', 'add', 'x']) inOut(n, [[B(22), B(31) + 0.4]], SP.snap, SP.snap);
   T('favDx', 0); T('addDx', 0); T('xDx', 0);
-  inOut('favHov', [[B(28), B(28) + 0.5]], SP.hover, spring(0.12, 1));
+  T('favHov', 0);
   inOut('addHov', [[B(29) - 0.12, B(29) + 0.45]], SP.hover, spring(0.12, 1));
   inOut('xHov', [[B(30) - 0.12, B(30) + 0.3]], SP.hover, spring(0.12, 1));
   T('addPress', 0).to(B(29), 1, SP.press).to(B(29) + 0.1, 0, SP.release);
@@ -634,7 +634,7 @@ function timeline() {
   arrive(24, rowBox(3));
   move(B(25) + 0.12, rowBox(4), spring(0.5, 0.97));          // the drag
   move(B(26) + 0.18, rowBox(17), SP.cursorLong);
-  arrive(28, P.fav); move(B(28) + 0.34, P.add); move(B(29) + 0.34, P.x);
+  move(B(28) + 0.2, P.add, SP.cursorLong); move(B(29) + 0.34, P.x);   // from the row straight to Add
   T('curP', 0);
   L.clicks = [2, 3, 4, 6, 10, 14, 17, 23, 27, 29, 30];
   for (const b of L.clicks) TR.curP.to(B(b), 1, SP.press).to(B(b) + 0.085, 0, SP.release);
@@ -654,9 +654,13 @@ function timeline() {
     TR['rd' + r].to(t + 0.02, 1, SP.draw).to(B(31), 0, SP.snap);
   });
 
-  // ── the opening headline: word by word on 16ths from the downbeat, rising 18 px out of a blur; it leaves on the
+  // ── the opening headline: word by word on 16ths from just after the stop, over the dissolving +, rising 18 px out of a blur; it leaves on the
   // press that opens the widget, fast and rising away, before the + swings up through its line as the camera pulls back
-  L.hlIn = k => B(1) + 0.05 + 0.2 * k;
+  L.HL0 = B(32) + 0.4;                                             // where the loop's line starts; the page starts here too
+  L.hlIn = k => L.HL0 + 0.02 + 0.11 * k;
+  // the opener waits for the headline: it grows in out of a blur once the last word has landed. On the stop the folded +
+  // shrinks away into a blur (the stop's dot) as the words start again, so the loop hands over from the + to the line
+  T('naA', 0).to(B(1) + 0.3, 1, spring(0.34, 1)).to(B(32) + 0.1, 0, spring(0.55, 1));
   HEADLINE.forEach((w, k) => {
     const tOut = B(6) - 0.04 + 0.006 * k;
     T('hl' + k, 0).to(L.hlIn(k), 1, SP.hlIn).to(tOut, 0, SP.hlOut);
@@ -683,7 +687,7 @@ function timeline() {
   EVENTS.push({ t: B(20), s: 'badge' });
   // (the chime swells 0.14 s to its peak, which is what the mixer places: its onset lands on the 16th like the others)
   EVENTS.push({ t: B(23) + AFTER, s: 'rise' }, { t: B(29) + AFTER + 0.14, s: 'success' }, { t: B(31), s: 'collapse' });
-  EVENTS.push({ t: B(32), s: 'dot' });                                          // on the stop: the + opens back into the eye
+  EVENTS.push({ t: B(32), s: 'dot' });                                          // on the stop: the + dissolves
   EVENTS.sort((a, b) => a.t - b.t);
 }
 
@@ -769,8 +773,10 @@ function seek(tIn) {
   const SX = cx - w / 2, SY = cy - h / 2;
   const st = EL.shape.style;
   st.width = w.toFixed(3) + 'px'; st.height = h.toFixed(3) + 'px'; st.borderRadius = rad.toFixed(3) + 'px';
-  st.transform = `translate(${SX.toFixed(3)}px,${SY.toFixed(3)}px) scale(${(1 - at('press')).toFixed(5)})`;
+  const na = op('naA'), pk = 1 - at('press'), nk = 0.86 + 0.14 * na;     // the opener's grow/shrink is about its centre
+  st.transform = `translate(${(SX + pk * w / 2 * (1 - nk)).toFixed(3)}px,${(SY + pk * h / 2 * (1 - nk)).toFixed(3)}px) scale(${(pk * nk).toFixed(5)})`;
   const fa = op('fillA'), sa = op('strokeA');
+  st.opacity = na.toFixed(4); st.filter = na > 0.997 ? 'none' : `blur(${((1 - na) * BLUR).toFixed(3)}px)`;
   st.background = fa > 0.002 ? labCss(TR.fill.at(t), fa) : 'transparent';
   st.boxShadow = sa > 0.003 ? `inset 0 0 0 1px ${labCss(TR.stroke.at(t), sa)}` : 'none';
   EL.inner.style.transform = `translate(${(-SX).toFixed(3)}px,${(-SY).toFixed(3)}px)`;
@@ -1066,7 +1072,7 @@ async function init() {
   // Follow the OS / browser theme live until the visitor or the host picks one.
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => { if (!qTheme && !Live.touched) setTheme(e.matches ? 0 : 1); });
   syncControls();
-  Live.wall0 = performance.now() / 1000;
+  Live.wall0 = performance.now() / 1000 - L.HL0;         // open on the headline, not on the downbeat
   // Visitors who ask for reduced motion get the assembled table as a still (motion=1 overrides).
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches && Q.get('motion') !== '1';
   const frozen = Q.has('t') ? parseFloat(Q.get('t')) : reduced ? B(28) + 0.3 : null;
