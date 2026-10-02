@@ -1,0 +1,430 @@
+{
+ "page": "763:36966",
+ "frames": {
+  "start": {
+   "orig": "682:7881",
+   "clone": "763:36967",
+   "w": 393,
+   "h": 852,
+   "msgs": [],
+   "hidden": []
+  },
+  "chat": {
+   "orig": "405:26801",
+   "clone": "763:39094",
+   "w": 393,
+   "h": 852,
+   "msgs": [
+    {
+     "id": "405:26820",
+     "name": "Chat message",
+     "r": [
+      0,
+      194,
+      393,
+      32
+     ],
+     "text": "You | created this chat | 10 | : | 00"
+    },
+    {
+     "id": "405:26821",
+     "name": "Chat message",
+     "r": [
+      0,
+      226,
+      393,
+      32
+     ],
+     "text": "You | updated the chat image | 10 | : | 00"
+    },
+    {
+     "id": "405:26826",
+     "name": "message",
+     "r": [
+      0,
+      258,
+      393,
+      98
+     ],
+     "text": "Dmitry Volkov - Alfa Bank | Seeing strong bid on OFZ 26238, 10.45% area. Anyone "
+    },
+    {
+     "id": "405:26827",
+     "name": "message",
+     "r": [
+      0,
+      356,
+      393,
+      62
+     ],
+     "text": "Константин Константинович Константинопольский - ПАО “Сбербанк” | We can show 50M"
+    },
+    {
+     "id": "405:26828",
+     "name": "message",
+     "r": [
+      0,
+      418,
+      393,
+      98
+     ],
+     "text": "Emily Walsh - Sberbank CIB | CBR rate decision at 13:30 — consensus is +100bp to"
+    },
+    {
+     "id": "405:26829",
+     "name": "message",
+     "r": [
+      0,
+      516,
+      393,
+      62
+     ],
+     "text": "Лю Ци | agreed, hedging gamma | 09 | : | 20"
+    },
+    {
+     "id": "405:26830",
+     "name": "message",
+     "r": [
+      0,
+      578,
+      393,
+      58
+     ],
+     "text": "Лю Ци | bid lifted, done | 09 | : | 21"
+    },
+    {
+     "id": "405:26831",
+     "name": "message",
+     "r": [
+      0,
+      636,
+      393,
+      68
+     ],
+     "text": "Лю Ци | OFZ 26240 curve is inverted past 5Y — implies cut expectations for H2 20"
+    },
+    {
+     "id": "405:26832",
+     "name": "message",
+     "r": [
+      0,
+      704,
+      393,
+      68
+     ],
+     "text": "Лю Ци | Switching to pay-fixed 3Y IRS at 13.75. Let me know if anyone wants the "
+    }
+   ],
+   "hidden": [
+    "input:Offer 26238 100M @ 10.40 |"
+   ],
+   "inputText": [
+    72,
+    806,
+    217,
+    20
+   ],
+   "input": [
+    0,
+    780,
+    393,
+    72
+   ],
+   "field": [
+    64,
+    796,
+    233,
+    40
+   ]
+  },
+  "desk": {
+   "orig": "705:15317",
+   "clone": "763:39591",
+   "w": 952,
+   "h": 712,
+   "msgs": [
+    {
+     "id": "705:18389",
+     "name": "Chat message",
+     "r": [
+      476,
+      54,
+      476,
+      32
+     ],
+     "text": "You | created this chat | 10 | : | 00"
+    },
+    {
+     "id": "705:18390",
+     "name": "Chat message",
+     "r": [
+      476,
+      86,
+      476,
+      32
+     ],
+     "text": "You | updated the chat image | 10 | : | 00"
+    },
+    {
+     "id": "705:18395",
+     "name": "message",
+     "r": [
+      476,
+      118,
+      476,
+      98
+     ],
+     "text": "Dmitry Volkov - Alfa Bank | Seeing strong bid on OFZ 26238, 10.45% area. Anyone "
+    },
+    {
+     "id": "705:18396",
+     "name": "message",
+     "r": [
+      476,
+      216,
+      476,
+      62
+     ],
+     "text": "Константин Константинович Константинопольский - ПАО “Сбербанк” | We can show 50M"
+    },
+    {
+     "id": "705:18397",
+     "name": "message",
+     "r": [
+      476,
+      278,
+      476,
+      98
+     ],
+     "text": "Emily Walsh - Sberbank CIB | CBR rate decision at 13:30 — consensus is +100bp to"
+    },
+    {
+     "id": "705:18398",
+     "name": "message",
+     "r": [
+      476,
+      376,
+      476,
+      62
+     ],
+     "text": "Лю Ци | agreed, hedging gamma | 09 | : | 20"
+    },
+    {
+     "id": "705:18399",
+     "name": "message",
+     "r": [
+      476,
+      438,
+      476,
+      58
+     ],
+     "text": "Лю Ци | bid lifted, done | 09 | : | 21"
+    },
+    {
+     "id": "705:18400",
+     "name": "message",
+     "r": [
+      476,
+      496,
+      476,
+      68
+     ],
+     "text": "Лю Ци | OFZ 26240 curve is inverted past 5Y — implies cut expectations for H2 20"
+    },
+    {
+     "id": "705:18401",
+     "name": "message",
+     "r": [
+      476,
+      564,
+      476,
+      68
+     ],
+     "text": "Лю Ци | Switching to pay-fixed 3Y IRS at 13.75. Let me know if anyone wants the "
+    }
+   ],
+   "hidden": [
+    "cursor",
+    "input:Offer 26238 100M @ 10.40 |"
+   ],
+   "inputText": [
+    548,
+    666,
+    217,
+    20
+   ],
+   "input": [
+    476,
+    640,
+    476,
+    72
+   ],
+   "field": [
+    540,
+    656,
+    316,
+    40
+   ]
+  },
+  "terminal": {
+   "orig": "705:31939",
+   "clone": "763:42191",
+   "w": 1920,
+   "h": 1200,
+   "msgs": [
+    {
+     "id": "705:42742",
+     "name": "Chat message",
+     "r": [
+      304,
+      454,
+      296,
+      32
+     ],
+     "text": "You | created this chat | 10 | : | 00"
+    },
+    {
+     "id": "705:42743",
+     "name": "Chat message",
+     "r": [
+      304,
+      486,
+      296,
+      32
+     ],
+     "text": "You | updated the chat image | 10 | : | 00"
+    },
+    {
+     "id": "705:42748",
+     "name": "message",
+     "r": [
+      304,
+      518,
+      296,
+      114
+     ],
+     "text": "Dmitry Volkov - Alfa Bank | Seeing strong bid on OFZ 26238, 10.45% area. Anyone "
+    },
+    {
+     "id": "705:42749",
+     "name": "message",
+     "r": [
+      304,
+      632,
+      296,
+      78
+     ],
+     "text": "Константин Константинович Константинопольский - ПАО “Сбербанк” | We can show 50M"
+    },
+    {
+     "id": "705:42750",
+     "name": "message",
+     "r": [
+      304,
+      710,
+      296,
+      114
+     ],
+     "text": "Emily Walsh - Sberbank CIB | CBR rate decision at 13:30 — consensus is +100bp to"
+    },
+    {
+     "id": "705:42751",
+     "name": "message",
+     "r": [
+      304,
+      824,
+      296,
+      62
+     ],
+     "text": "Лю Ци | agreed, hedging gamma | 09 | : | 20"
+    },
+    {
+     "id": "705:42752",
+     "name": "message",
+     "r": [
+      304,
+      886,
+      296,
+      58
+     ],
+     "text": "Лю Ци | bid lifted, done | 09 | : | 21"
+    },
+    {
+     "id": "705:42753",
+     "name": "message",
+     "r": [
+      304,
+      944,
+      296,
+      84
+     ],
+     "text": "Лю Ци | OFZ 26240 curve is inverted past 5Y — implies cut expectations for H2 20"
+    },
+    {
+     "id": "705:42754",
+     "name": "message",
+     "r": [
+      304,
+      1028,
+      296,
+      84
+     ],
+     "text": "Лю Ци | Switching to pay-fixed 3Y IRS at 13.75. Let me know if anyone wants the "
+    }
+   ],
+   "hidden": [
+    "cursor",
+    "cursor",
+    "cursor",
+    "cursor",
+    "cursor",
+    "cursor",
+    "input:Offer 26238 100M @ 10.40 |"
+   ],
+   "inputText": [
+    376,
+    1136,
+    217,
+    20
+   ],
+   "input": [
+    304,
+    1120,
+    296,
+    72
+   ],
+   "field": [
+    368,
+    1136,
+    136,
+    40
+   ]
+  },
+  "blist": {
+   "orig": "957:38953",
+   "states": {
+    "m-blist0": "Bell bg, Echo, bell hidden; avatar Bell=false; Marcus's counter hidden",
+    "m-blist1": "Echo and bell hidden"
+   },
+   "bell": "957:38971 → g-bell (8×)"
+  },
+  "bchat": {
+   "orig": "957:39898",
+   "hidden": [
+    "dialog messages",
+    "header bell 968:40412",
+    "input:Offer 26238 100M @ 10.40 |"
+   ],
+   "msgs": [
+    "957:39922",
+    "957:39923",
+    "957:39925",
+    "957:39926",
+    "957:39927",
+    "957:39928",
+    "957:39924",
+    "968:40670"
+   ]
+  }
+ }
+}
