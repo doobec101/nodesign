@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /* Pre-deploy QA for nodesign: opens the built page (dist/, served the way Vercel serves it) in Chromium, WebKit and
    Firefox under bad conditions — slow or blocked Google Fonts / jsDelivr, Slow 4G, a phone, dark theme, reduced motion,
-   an auto-translating browser, file:// — measures when the content, the chat film and the table loop appear, collects
-   errors, and saves screenshots plus contact sheets to qa-report/ for review.
+   an auto-translating browser, file:// — measures when the content appears and how long the chat film and the table loop
+   keep a visitor waiting once scrolled to, collects errors, and saves screenshots plus contact sheets to qa-report/ for review.
 
    npm run qa                                   build + full run (exit 1 on any FAIL)
    node scripts/qa.mjs --url https://www.antond.xyz --only desktop,slow-3p     smoke-test production
@@ -31,13 +31,13 @@ const BROWSERS = list(opt('browsers', 'chromium,webkit,firefox'));
 /* ═══ Budgets (ms from navigation) ═══ */
 const BUDGET = {
   hero: 3000,          // headline + lede visible
-  loop: 6000,          // table loop booted (window.ready inside the iframe)
-  film: 6000,          // chat film's header read (window.ready inside its iframe; it buffers once in view)
-  filmPlay: 4000,      // …and then playing in view: 0.5 s of it shown
+  // the case previews load one screen ahead (the film with the page, the table loop once the film's screen is reached),
+  // so what counts is how long a visitor who scrolls to one waits on an empty card: from scrolled into view to booted
+  wait: 2000,          // chat film's header read / table loop booted (window.ready inside the iframe)
+  filmPlay: 4000,      // …and the film then playing in view: 0.5 s of it shown
   filmPlaySlowNet: 15000,
   heroSlowNet: 6000,   // same on Slow 4G, where the page itself takes a while
-  loopSlowNet: 15000,
-  filmSlowNet: 15000,
+  waitSlowNet: 10000,
   cap: 30000,          // stop waiting and screenshot whatever is there
 };
 const THIRD_PARTY = /fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net/;
@@ -68,12 +68,18 @@ const SCENARIOS = [
   { id: 'file',        note: 'opened from disk, file:// (Chromium only)', context: DESKTOP, file: true, only: isChromium },
 ];
 
-/* ═══ Static server for dist/ (Vercel: cleanUrls, / → index.html) ═══ */
+/* ═══ Static server for dist/, the way Vercel serves it (cleanUrls: / → index.html, /x → x.html, /x.html → 308 /x) ═══ */
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css',
   '.png': 'image/png', '.svg': 'image/svg+xml', '.flac': 'audio/flac', '.woff2': 'font/woff2', '.mp4': 'video/mp4', '.jpg': 'image/jpeg' };
 function serve(dir) {
   const server = http.createServer((req, res) => {
-    let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    const u = new URL(req.url, 'http://x');
+    let p = decodeURIComponent(u.pathname);
+    // the preview frames ask for media/x.html and land on media/x, as on Vercel — so the checks below see the same URLs
+    if (p.endsWith('.html')) {
+      res.writeHead(308, { location: (p.endsWith('/index.html') ? p.slice(0, -10) : p.slice(0, -5)) + u.search }).end();
+      return;
+    }
     if (p.endsWith('/')) p += 'index.html';
     let file = path.join(dir, p);
     if (!file.startsWith(dir)) { res.writeHead(403).end(); return; }
@@ -96,6 +102,9 @@ function serve(dir) {
   });
   return new Promise(r => server.listen(0, '127.0.0.1', () => r(server)));
 }
+
+// a preview frame by name, whether or not its URL kept the .html (cleanUrls drops it)
+const frameOf = (page, name) => page.frames().find(f => new RegExp(`/media/${name}(\\.html)?([?#]|$)`).test(f.url()));
 
 /* ═══ In-page probes ═══ */
 // A translator rewrites text nodes word by word and skips translate="no" / .notranslate / <meta name="google" content="notranslate">.
@@ -203,18 +212,20 @@ async function runScenario(browser, engine, sc, baseUrl) {
     await shot('hero');
 
     // 3 · second screen: scroll to the chat film, wait for its first frame, check it plays (a still under reduced motion)
+    const waitBudget = sc.slowNet ? BUDGET.waitSlowNet : BUDGET.wait;
+    const filmShownAt = Date.now();
     await page.evaluate(() => document.querySelector('iframe[data-src*="chat-promo"]')?.closest('.work-media')?.scrollIntoView({ block: 'center' })).catch(() => {});
-    const filmBudget = sc.slowNet ? BUDGET.filmSlowNet : BUDGET.film;
     let film = null, filmAt = null;
     while (since() < BUDGET.cap) {
-      film = page.frames().find(f => f.url().includes('chat-promo.html'));
+      film = frameOf(page, 'chat-promo');
       if (film && (filmAt = await film.evaluate(() => window.__qa && window.__qa.ready).catch(() => null))) break;
       await page.waitForTimeout(150);
     }
     res.metrics.filmMs = filmAt ? Math.round(filmAt - navStart) : null;
     if (!filmAt) fail('chat film never loaded (black card)');
     else {
-      if (res.metrics.filmMs > filmBudget) fail(`chat film loaded after ${sec(res.metrics.filmMs)} (budget ${filmBudget / 1000} s) — black card until then`);
+      res.metrics.filmWaitMs = Math.max(0, Math.round(filmAt - filmShownAt));
+      if (res.metrics.filmWaitMs > waitBudget) fail(`chat film loaded ${sec(res.metrics.filmWaitMs)} after it came into view (budget ${waitBudget / 1000} s) — black card until then`);
       const state = () => film.evaluate(() => { const v = document.getElementById('film'); return { t: v.currentTime, paused: v.paused, err: v.error && v.error.code, poster: v.poster }; }).catch(() => null);
       const still = sc.context.reducedMotion === 'reduce';
       const playBudget = sc.slowNet ? BUDGET.filmPlaySlowNet : BUDGET.filmPlay, t1 = since();
@@ -229,23 +240,26 @@ async function runScenario(browser, engine, sc, baseUrl) {
     await shot('film');
 
     // 4 · third screen: scroll to the table loop, wait for it to boot
+    const loopShownAt = Date.now();
     await page.evaluate(() => document.querySelector('iframe[data-src*="table-loop"]')?.closest('.work-media')?.scrollIntoView({ block: 'center' })).catch(() => {});
     if (film) {   // the film pauses once it is out of view
       await page.waitForTimeout(400);
       const paused = await film.evaluate(() => document.getElementById('film').paused).catch(() => null);
       if (paused === false) fail('chat film keeps playing out of view');
     }
-    const loopBudget = sc.slowNet ? BUDGET.loopSlowNet : BUDGET.loop;
     let frame = null, loopAt = null;
     while (since() < BUDGET.cap) {
-      frame = page.frames().find(f => f.url().includes('table-loop.html'));
+      frame = frameOf(page, 'table-loop');
       if (frame && (loopAt = await frame.evaluate(() => window.__qa && window.__qa.ready).catch(() => null))) break;
       await page.waitForTimeout(150);
     }
     const loopReady = !!loopAt;
     res.metrics.loopMs = loopReady ? Math.round(loopAt - navStart) : null;
     if (!loopReady) fail('table loop never started (grey card)');
-    else if (res.metrics.loopMs > loopBudget) fail(`table loop started after ${sec(res.metrics.loopMs)} (budget ${loopBudget / 1000} s) — grey card until then`);
+    else {
+      res.metrics.loopWaitMs = Math.max(0, Math.round(loopAt - loopShownAt));
+      if (res.metrics.loopWaitMs > waitBudget) fail(`table loop started ${sec(res.metrics.loopWaitMs)} after it came into view (budget ${waitBudget / 1000} s) — grey card until then`);
+    }
     if (loopReady) {
       res.metrics.loopFonts = await frame.evaluate(loadedFamilies).catch(() => []);
       const fontOk = await frame.evaluate(() => window.fontOk).catch(() => null);
@@ -300,7 +314,7 @@ function reportHtml(results, { scenario, browser, compact } = {}) {
   const shotNames = ['2s', 'hero', 'film', 'loop', 'translated'];
   const body = rows.map(r => `
     <section>
-      <h2>${esc(r.scenario)} · ${esc(r.browser)} <small>${esc(r.note)} · hero ${sec(r.metrics.heroMs)} · film ${sec(r.metrics.filmMs)} · loop ${sec(r.metrics.loopMs)}</small></h2>
+      <h2>${esc(r.scenario)} · ${esc(r.browser)} <small>${esc(r.note)} · hero ${sec(r.metrics.heroMs)} · film ${sec(r.metrics.filmMs)} (wait ${sec(r.metrics.filmWaitMs)}) · loop ${sec(r.metrics.loopMs)} (wait ${sec(r.metrics.loopWaitMs)})</small></h2>
       ${r.checks.map(c => `<div class="${c.level}">${c.level} ${esc(c.msg)}</div>`).join('') || '<div class="OK">OK</div>'}
       <div class="shots">${shotNames.filter(n => r.shots[n]).map(n => `<figure><img src="${esc(r.shots[n])}"><figcaption>${n}</figcaption></figure>`).join('')}</div>
     </section>`).join('');
@@ -338,7 +352,7 @@ await Promise.all(BROWSERS.map(async (engine) => {
     if (sc.file && TARGET_URL) continue;
     const r = await runScenario(browser, engine, sc, baseUrl);
     const fails = r.checks.filter(c => c.level === 'FAIL').length, warns = r.checks.length - fails;
-    console.log(`${fails ? 'FAIL' : warns ? 'warn' : ' ok '}  ${engine.padEnd(8)} ${sc.id.padEnd(11)} hero ${sec(r.metrics.heroMs).padStart(6)}  film ${sec(r.metrics.filmMs).padStart(6)}  loop ${sec(r.metrics.loopMs).padStart(6)}`);
+    console.log(`${fails ? 'FAIL' : warns ? 'warn' : ' ok '}  ${engine.padEnd(8)} ${sc.id.padEnd(11)} hero ${sec(r.metrics.heroMs).padStart(6)}  film ${sec(r.metrics.filmMs).padStart(6)} (wait ${sec(r.metrics.filmWaitMs).padStart(5)})  loop ${sec(r.metrics.loopMs).padStart(6)} (wait ${sec(r.metrics.loopWaitMs).padStart(5)})`);
     results.push(r);
   }
   await browser.close();
