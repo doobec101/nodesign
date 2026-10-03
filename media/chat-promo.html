@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<meta charset="utf-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Radar – Chats</title>
+<link rel="icon" href="data:,">
+<style>
+  /* The chat film (motion/chat: 41 s, 1600×1200, 60 fps, H.264 + AAC). It is dark only, so the frame stays black whatever
+     the site's theme. A plain <video> plays from file:// too — no fetch, no canvas. */
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+  #film { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; object-fit: cover; background: #000; }
+  /* In-frame controls, as in the table loop: New Button · Icon only · M (32×32) · Unfilled — its dark values, since the
+     film is dark; no fill until hover (the corner behind it stays dark all film long). Screen-space, never scaled with the video. */
+  /* --ui: the host page's UI scale (?ui=, or a message), which the frame doesn't inherit as zoom */
+  #controls { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; z-index: 10; zoom: var(--ui, 1); }
+  #controls button { width: 32px; height: 32px; border: 0; padding: 0; margin: 0; border-radius: 4px; cursor: pointer;
+                     display: grid; place-items: center; background: transparent; color: #f0f0f0; }
+  #controls button:hover { background: #201c26; }
+  #controls button:active { background: #2c2735; }
+  #controls button:focus-visible { outline: 2px solid #7d3ee3; outline-offset: 2px; }
+  #controls svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #controls [hidden], #controls[hidden] { display: none; }
+  html.nocontrols #controls { display: none; }
+</style>
+</head>
+<body>
+<video id="film" muted playsinline loop disablepictureinpicture disableremoteplayback
+       aria-label="Trade Radar chats: one chat goes from a MacBook to an iPhone Duo and an iPhone 16"></video>
+<div id="controls">
+  <button id="btnSound" type="button" aria-label="Turn sound on" aria-pressed="false">
+    <svg viewBox="0 0 24 24" id="icoSoundOff"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
+    <svg viewBox="0 0 24 24" id="icoSoundOn" hidden><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+  </button>
+</div>
+<script>
+'use strict';
+/* ═══ The chat film as a page of its own, like the table loop. It plays muted while at least a third of it is on screen
+   and pauses outside it, so a visitor meets it from the first title; the sound button unmutes it (a click in this frame
+   is the gesture the browser wants). Visitors who ask for reduced motion get a still of the line-up, and the film plays
+   only once they turn the sound on. A browser that can't play it (no H.264, autoplay blocked) shows the still too. ═══ */
+const Q = new URLSearchParams(location.search);
+const setUi = v => { if (+v > 0) document.documentElement.style.setProperty('--ui', String(+v)); };
+setUi(Q.get('ui'));
+const MSG = 'chat-promo';
+const POSTER = 'chat-promo.jpg';
+const film = document.getElementById('film');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches && Q.get('motion') !== '1';
+const Live = { sound: false, inView: false, failed: false };
+
+film.muted = true;                                       // the attribute only sets the default; muted autoplay needs the property
+if (reduced) film.poster = POSTER;
+// The host loads this frame a screen ahead, with its own first screen still loading: only the header here (faststart
+// puts it first, a few KB); the film buffers once play() asks for it — in view, or on the sound button
+film.preload = 'metadata';
+film.src = 'chat-promo.mp4';
+if (Q.get('controls') === '0') document.documentElement.classList.add('nocontrols');
+
+function play() {
+  if (Live.failed) return;
+  const p = film.play();
+  if (p) p.catch(() => { film.poster = POSTER; });       // blocked (e.g. iOS Low Power Mode): the still, until the sound button
+}
+function update() {
+  const want = Live.inView && (!reduced || Live.sound);
+  if (want && film.paused) play();
+  else if (!want && !film.paused) film.pause();
+}
+function setSound(on) {
+  Live.sound = !!on;
+  film.muted = !Live.sound;
+  if (Live.sound) { film.volume = 1; play(); }           // a click on the button means "play it", even half in view
+  else update();
+  syncControls(); postState();
+}
+function syncControls() {
+  const bs = document.getElementById('btnSound');
+  const show = (id, on) => document.getElementById(id).toggleAttribute('hidden', !on);   // SVG has no .hidden property
+  show('icoSoundOn', Live.sound); show('icoSoundOff', !Live.sound);
+  bs.setAttribute('aria-pressed', String(Live.sound)); bs.setAttribute('aria-label', Live.sound ? 'Turn sound off' : 'Turn sound on');
+}
+function postState(extra = {}) {
+  if (window.parent === window) return;
+  window.parent.postMessage({ type: MSG + ':state', sound: Live.sound, playing: !film.paused, ...extra }, '*');
+}
+window.addEventListener('message', e => {
+  const d = e.data;
+  if (!d || typeof d !== 'object' || d.type !== MSG) return;   // the host's theme is ignored: the film is dark either way
+  if ('sound' in d) setSound(d.sound === 'toggle' ? !Live.sound : !!d.sound);
+  if ('ui' in d) setUi(d.ui);
+  if (d.get) postState();
+});
+
+/* ═══ Boot ═══ */
+document.getElementById('btnSound').addEventListener('click', () => setSound(!Live.sound));
+// In a frame the implicit root is the top page's viewport, so this tracks the film on the host page (file:// too)
+new IntersectionObserver(([e]) => { Live.inView = e.isIntersecting && e.intersectionRatio >= 0.33; update(); },
+  { threshold: [0, 0.33] }).observe(film);
+const done = (extra = {}) => { if (window.ready) return; window.ready = true; postState({ ready: true, ...extra }); };
+film.addEventListener('loadedmetadata', () => done(), { once: true });
+film.addEventListener('error', () => {
+  Live.failed = true; film.poster = POSTER;
+  document.getElementById('controls').hidden = true;     // nothing to unmute
+  done({ error: `the film can't play here (${film.error ? film.error.code : '?'})` });
+});
+film.addEventListener('play', () => postState());
+film.addEventListener('pause', () => postState());
+syncControls();
+</script>
+</body>
+</html>

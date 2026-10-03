@@ -14,7 +14,9 @@
   /* Every colour is computed from the token table in the script; these are first-paint fallbacks (Background/Level2). */
   html, body { margin: 0; height: 100%; overflow: hidden; background: #e0e0e0; }
   @media (prefers-color-scheme: dark) { html, body { background: #202020; } }
-  #stage { position: absolute; left: 0; top: 0; width: 1440px; height: 1440px; overflow: hidden; transform-origin: 0 0;
+  /* The scene is composed for a square, but a wider frame (the site's 4:3 plate) shows what lies beside it instead of a
+     hard edge: in the close-ups the widget is wider than the square and runs on to the frame's edge */
+  #stage { position: absolute; left: 0; top: 0; width: 1440px; height: 1440px; overflow: visible; transform-origin: 0 0;
            font-family: "Inter", sans-serif; -webkit-font-smoothing: antialiased; font-feature-settings: normal; }
   .a { position: absolute; left: 0; top: 0; }
   #world { transform-origin: 0 0; }
@@ -33,11 +35,14 @@
   #cursor { position: absolute; left: 0; top: 0; overflow: visible; transform-origin: 0 0; }
   #headline { position: absolute; left: 0; top: 0; width: 1440px; height: 1440px; pointer-events: none; }
   #measure { position: absolute; left: -9999px; top: 0; white-space: pre; font-family: "Inter", sans-serif; }
-  /* In-frame controls: New Button · Icon only · M (32×32) · Secondary. Screen-space, never scaled with the stage. */
-  #controls { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; z-index: 10; }
+  /* In-frame controls: New Button · Icon only · M (32×32) · Unfilled — no fill until hover. Screen-space, never scaled with the stage. */
+  /* --ui: the host page's UI scale (?ui=, or a message), which the frame no longer inherits as zoom — Safari lays out
+     fixed controls in a zoomed frame as if it weren't, and they fell off the edge */
+  #controls { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; z-index: 10; zoom: var(--ui, 1); }
   #controls button { width: 32px; height: 32px; border: 0; padding: 0; margin: 0; border-radius: 4px; cursor: pointer;
                      display: grid; place-items: center; background: var(--ctl-fill); color: var(--ctl-icon); }
   #controls button:hover { background: var(--ctl-fill-hover); }
+  #controls button:active { background: var(--ctl-fill-press); }
   #controls button:focus-visible { outline: 2px solid var(--ctl-ring); outline-offset: 2px; }
   #controls svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   #controls [hidden] { display: none; }
@@ -79,6 +84,8 @@ const W = 1440, H = 1440;
 const BPM = 74.998, BEAT = 60 / BPM, LOOP = 8 * 4 * BEAT;           // 25.601 s
 const B = n => (n - 1) * BEAT;                                       // beat n (1-based)
 const Q = new URLSearchParams(location.search);
+const setUi = v => { if (+v > 0) document.documentElement.style.setProperty('--ui', String(+v)); };
+setUi(Q.get('ui'));
 const RENDER = Q.has('render');
 const MSG = 'table-loop';
 
@@ -1018,9 +1025,10 @@ function syncControls() {
 }
 function styleControls() {
   const r = document.documentElement.style;
-  r.setProperty('--ctl-fill', labCss(C('Button/Fill/Secondary/Default')));
-  r.setProperty('--ctl-fill-hover', labCss(C('Button/Fill/Secondary/Hover')));
-  r.setProperty('--ctl-icon', labCss(C('Button/Icon/Secondary/Default')));
+  r.setProperty('--ctl-fill', 'transparent');
+  r.setProperty('--ctl-fill-hover', labCss(C('Button/Fill/Unfilled/Hover')));
+  r.setProperty('--ctl-fill-press', labCss(C('Button/Fill/Unfilled/Pressed')));
+  r.setProperty('--ctl-icon', labCss(C('Button/Icon/Unfilled/Default')));
   r.setProperty('--ctl-ring', labCss(C('Button/Stroke/Secondary/Focused')));
 }
 function postState(extra = {}) {
@@ -1036,6 +1044,7 @@ window.addEventListener('message', e => {
     else setTheme(d.theme === 'toggle' ? 1 - Live.theme : d.theme === 'light' ? 1 : 0);
   }
   if ('sound' in d) setSound(d.sound === 'toggle' ? !Live.sound : !!d.sound);
+  if ('ui' in d) setUi(d.ui);
   if (d.get) postState();
 });
 function fit() {

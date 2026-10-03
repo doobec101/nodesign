@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /* Pre-deploy QA for nodesign: opens the built page (dist/, served the way Vercel serves it) in Chromium, WebKit and
    Firefox under bad conditions — slow or blocked Google Fonts / jsDelivr, Slow 4G, a phone, dark theme, reduced motion,
-   an auto-translating browser, file:// — measures when the content and the table loop appear, collects errors, and
-   saves screenshots plus contact sheets to qa-report/ for review.
+   an auto-translating browser, file:// — measures when the content, the chat film and the table loop appear, collects
+   errors, and saves screenshots plus contact sheets to qa-report/ for review.
 
    npm run qa                                   build + full run (exit 1 on any FAIL)
    node scripts/qa.mjs --url https://www.antond.xyz --only desktop,slow-3p     smoke-test production
@@ -32,8 +32,12 @@ const BROWSERS = list(opt('browsers', 'chromium,webkit,firefox'));
 const BUDGET = {
   hero: 3000,          // headline + lede visible
   loop: 6000,          // table loop booted (window.ready inside the iframe)
+  film: 6000,          // chat film's header read (window.ready inside its iframe; it buffers once in view)
+  filmPlay: 4000,      // …and then playing in view: 0.5 s of it shown
+  filmPlaySlowNet: 15000,
   heroSlowNet: 6000,   // same on Slow 4G, where the page itself takes a while
   loopSlowNet: 15000,
+  filmSlowNet: 15000,
   cap: 30000,          // stop waiting and screenshot whatever is there
 };
 const THIRD_PARTY = /fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net/;
@@ -66,7 +70,7 @@ const SCENARIOS = [
 
 /* ═══ Static server for dist/ (Vercel: cleanUrls, / → index.html) ═══ */
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css',
-  '.png': 'image/png', '.svg': 'image/svg+xml', '.flac': 'audio/flac', '.woff2': 'font/woff2' };
+  '.png': 'image/png', '.svg': 'image/svg+xml', '.flac': 'audio/flac', '.woff2': 'font/woff2', '.mp4': 'video/mp4', '.jpg': 'image/jpeg' };
 function serve(dir) {
   const server = http.createServer((req, res) => {
     let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
@@ -76,7 +80,17 @@ function serve(dir) {
     if (!fs.existsSync(file) && fs.existsSync(file + '.html')) file += '.html';
     fs.readFile(file, (err, buf) => {
       if (err) { res.writeHead(404).end('not found'); return; }
-      res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' });
+      const head = { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache', 'accept-ranges': 'bytes' };
+      // byte ranges, as Vercel serves them: Safari won't play a <video> from a server without them
+      const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+      if (range) {
+        const a = range[1] ? +range[1] : Math.max(0, buf.length - +range[2]), b = range[1] && range[2] ? Math.min(+range[2], buf.length - 1) : buf.length - 1;
+        if (a > b || a >= buf.length) { res.writeHead(416, { 'content-range': `bytes */${buf.length}` }).end(); return; }
+        res.writeHead(206, { ...head, 'content-range': `bytes ${a}-${b}/${buf.length}`, 'content-length': b - a + 1 });
+        res.end(buf.subarray(a, b + 1));
+        return;
+      }
+      res.writeHead(200, { ...head, 'content-length': buf.length });
       res.end(buf);
     });
   });
@@ -188,8 +202,39 @@ async function runScenario(browser, engine, sc, baseUrl) {
     res.metrics.mainFonts = await page.evaluate(loadedFamilies).catch(() => []);
     await shot('hero');
 
-    // 3 · second screen: scroll to the table loop, wait for it to boot
-    await page.evaluate(() => document.querySelector('.work-media')?.scrollIntoView({ block: 'center' })).catch(() => {});
+    // 3 · second screen: scroll to the chat film, wait for its first frame, check it plays (a still under reduced motion)
+    await page.evaluate(() => document.querySelector('iframe[data-src*="chat-promo"]')?.closest('.work-media')?.scrollIntoView({ block: 'center' })).catch(() => {});
+    const filmBudget = sc.slowNet ? BUDGET.filmSlowNet : BUDGET.film;
+    let film = null, filmAt = null;
+    while (since() < BUDGET.cap) {
+      film = page.frames().find(f => f.url().includes('chat-promo.html'));
+      if (film && (filmAt = await film.evaluate(() => window.__qa && window.__qa.ready).catch(() => null))) break;
+      await page.waitForTimeout(150);
+    }
+    res.metrics.filmMs = filmAt ? Math.round(filmAt - navStart) : null;
+    if (!filmAt) fail('chat film never loaded (black card)');
+    else {
+      if (res.metrics.filmMs > filmBudget) fail(`chat film loaded after ${sec(res.metrics.filmMs)} (budget ${filmBudget / 1000} s) — black card until then`);
+      const state = () => film.evaluate(() => { const v = document.getElementById('film'); return { t: v.currentTime, paused: v.paused, err: v.error && v.error.code, poster: v.poster }; }).catch(() => null);
+      const still = sc.context.reducedMotion === 'reduce';
+      const playBudget = sc.slowNet ? BUDGET.filmPlaySlowNet : BUDGET.filmPlay, t1 = since();
+      let st = await state();
+      while (!still && st && !st.err && (st.paused || st.t < 0.5) && since() - t1 < playBudget) { await page.waitForTimeout(250); st = await state(); }
+      if (still) await page.waitForTimeout(1500), st = await state();
+      res.metrics.film = st;
+      if (st && st.err) warn(`chat film can't play in this browser build (MediaError ${st.err}) — the still is shown instead`);
+      else if (st && still) { if (!st.paused || !st.poster) fail('reduced motion: the chat film should be a still until the sound button'); }
+      else if (st && (st.paused || st.t < 0.5)) fail(`chat film not playing ${playBudget / 1000} s after it came into view (paused ${st.paused}, at ${st.t.toFixed(2)} s)`);
+    }
+    await shot('film');
+
+    // 4 · third screen: scroll to the table loop, wait for it to boot
+    await page.evaluate(() => document.querySelector('iframe[data-src*="table-loop"]')?.closest('.work-media')?.scrollIntoView({ block: 'center' })).catch(() => {});
+    if (film) {   // the film pauses once it is out of view
+      await page.waitForTimeout(400);
+      const paused = await film.evaluate(() => document.getElementById('film').paused).catch(() => null);
+      if (paused === false) fail('chat film keeps playing out of view');
+    }
     const loopBudget = sc.slowNet ? BUDGET.loopSlowNet : BUDGET.loop;
     let frame = null, loopAt = null;
     while (since() < BUDGET.cap) {
@@ -209,19 +254,21 @@ async function runScenario(browser, engine, sc, baseUrl) {
     await page.waitForTimeout(2500);
     await shot('loop');
 
-    // 4 · auto-translate
+    // 5 · auto-translate
     if (sc.translate) {
       // the site is English-only on purpose: translation is switched off on <html> of the page and of the loop
       const pageChanged = await page.evaluate(pseudoTranslate);
       const loopChanged = frame ? await frame.evaluate(pseudoTranslate).catch(() => 0) : 0;
-      res.metrics.translated = { page: pageChanged, loop: loopChanged };
+      const filmChanged = film ? await film.evaluate(pseudoTranslate).catch(() => 0) : 0;
+      res.metrics.translated = { page: pageChanged, loop: loopChanged, film: filmChanged };
+      if (filmChanged) fail(`auto-translate rewrites ${filmChanged} text nodes in the chat film's frame — add translate="no"`);
       if (pageChanged) fail(`auto-translate rewrites ${pageChanged} text nodes on the page — translate="no" on <html> is missing`);
       if (loopChanged) fail(`auto-translate rewrites ${loopChanged} labels inside the table loop, whose layout is measured in English — add translate="no"`);
       await page.waitForTimeout(1500);
       await shot('translated');
     }
 
-    // 5 · layout sanity
+    // 6 · layout sanity
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth).catch(() => 0);
     if (overflow > 1) fail(`horizontal scroll: page is ${overflow}px wider than the viewport`);
     if (!sc.thirdParty) {
@@ -234,11 +281,12 @@ async function runScenario(browser, engine, sc, baseUrl) {
     fail(`run crashed: ${e.message.split('\n')[0]}`);
   }
 
-  // 6 · errors (third-party failures are the point of the *-3p scenarios)
+  // 7 · errors (third-party failures are the point of the *-3p scenarios)
   const expected = (s) => sc.thirdParty && THIRD_PARTY.test(s) || sc.thirdParty === 'blocked' && /Failed to load resource/.test(s);
   errors.forEach(m => fail(`JS error: ${m.slice(0, 200)}`));
   consoleErrors.filter(m => !expected(m)).forEach(m => fail(`console error: ${m.slice(0, 200)}`));
-  failed.filter(m => !expected(m) && !/ERR_ABORTED|NS_BINDING_ABORTED|cancelled/i.test(m)).forEach(m => warn(`request failed: ${m}`));
+  // NS_ERROR_PARSED_DATA_CACHED: Firefox drops a media request whose bytes it already holds
+  failed.filter(m => !expected(m) && !/ERR_ABORTED|NS_BINDING_ABORTED|NS_ERROR_PARSED_DATA_CACHED|cancelled/i.test(m)).forEach(m => warn(`request failed: ${m}`));
 
   await context.close();
   return res;
@@ -249,10 +297,10 @@ const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;
 const sec = (ms) => ms == null ? '—' : (ms / 1000).toFixed(1) + ' s';
 function reportHtml(results, { scenario, browser, compact } = {}) {
   const rows = results.filter(r => (!scenario || r.scenario === scenario) && (!browser || r.browser === browser));
-  const shotNames = ['2s', 'hero', 'loop', 'translated'];
+  const shotNames = ['2s', 'hero', 'film', 'loop', 'translated'];
   const body = rows.map(r => `
     <section>
-      <h2>${esc(r.scenario)} · ${esc(r.browser)} <small>${esc(r.note)} · hero ${sec(r.metrics.heroMs)} · loop ${sec(r.metrics.loopMs)}</small></h2>
+      <h2>${esc(r.scenario)} · ${esc(r.browser)} <small>${esc(r.note)} · hero ${sec(r.metrics.heroMs)} · film ${sec(r.metrics.filmMs)} · loop ${sec(r.metrics.loopMs)}</small></h2>
       ${r.checks.map(c => `<div class="${c.level}">${c.level} ${esc(c.msg)}</div>`).join('') || '<div class="OK">OK</div>'}
       <div class="shots">${shotNames.filter(n => r.shots[n]).map(n => `<figure><img src="${esc(r.shots[n])}"><figcaption>${n}</figcaption></figure>`).join('')}</div>
     </section>`).join('');
@@ -290,7 +338,7 @@ await Promise.all(BROWSERS.map(async (engine) => {
     if (sc.file && TARGET_URL) continue;
     const r = await runScenario(browser, engine, sc, baseUrl);
     const fails = r.checks.filter(c => c.level === 'FAIL').length, warns = r.checks.length - fails;
-    console.log(`${fails ? 'FAIL' : warns ? 'warn' : ' ok '}  ${engine.padEnd(8)} ${sc.id.padEnd(11)} hero ${sec(r.metrics.heroMs).padStart(6)}  loop ${sec(r.metrics.loopMs).padStart(6)}`);
+    console.log(`${fails ? 'FAIL' : warns ? 'warn' : ' ok '}  ${engine.padEnd(8)} ${sc.id.padEnd(11)} hero ${sec(r.metrics.heroMs).padStart(6)}  film ${sec(r.metrics.filmMs).padStart(6)}  loop ${sec(r.metrics.loopMs).padStart(6)}`);
     results.push(r);
   }
   await browser.close();

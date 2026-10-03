@@ -495,7 +495,8 @@
       display: flex; flex-direction: column; align-items: center;
       gap: 20px; text-align: center;
     }
-    /* the preview: a 4:3 plate (square for square pieces), as wide as the content, but never taller than the screen under the copy */
+    /* the preview: a 4:3 plate, as wide as the content, but never taller than the screen under the copy — one size for every
+       case (the square table loop sits in the middle of it and runs on to its sides) */
     .work-media {
       --media-ratio: 4 / 3;
       width: min(100%, calc((100lvh / var(--ui-scale) - 280px) * var(--media-ratio)));
@@ -506,8 +507,9 @@
       -webkit-backdrop-filter: blur(var(--blur-surface));
       backdrop-filter: blur(var(--blur-surface));
     }
-    .work-media.square { --media-ratio: 1; }
-    .work-media iframe { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; }
+    /* the frame takes no part in the page's zoom: Safari zooms a frame's content with the page but lays out its fixed
+       controls as if it didn't — they fell off the edge and the picture was cropped. The scale goes in as ?ui= instead */
+    .work-media iframe { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; zoom: calc(1 / var(--ui-scale)); }
     body.is-chat .work { display: none; }
 
     /* ---------- plate ---------- */
@@ -836,7 +838,25 @@
       </div>
     </main>
 
-    <!-- second screen · TR DS Atoms: the table loop (media/table-loop.html, a page of its own with sound), loaded when the screen comes near -->
+    <!-- second screen · TR Chats: the chat film (media/chat-promo.html, a page of its own with a sound button), loaded when the screen comes near -->
+    <section class="work" id="chats" aria-labelledby="chatsTitle">
+      <div class="work-inner">
+        <div class="work-copy">
+          <h2 class="display" id="chatsTitle" data-scramble-heading>
+            <span class="sr-only">Trade Radar – Chats</span>
+            <span aria-hidden="true" data-scramble-live><span class="block">Trade Radar&nbsp;– Chats</span></span>
+          </h2>
+          <div class="reveal" data-reveal="scroll">
+            <p class="lede">Chat redesign in 6 weeks. MAU grew from 300 to 680 in the four months after release</p>
+          </div>
+        </div>
+        <figure class="work-media reveal" data-reveal="scroll">
+          <iframe data-src="media/chat-promo.html" data-channel="chat-promo" allow="autoplay" title="Trade Radar chats: one chat goes from a MacBook to an iPhone Duo and an iPhone 16"></iframe>
+        </figure>
+      </div>
+    </section>
+
+    <!-- third screen · TR DS Atoms: the table loop (media/table-loop.html, a page of its own with sound), loaded when the screen comes near -->
     <section class="work" id="work" aria-labelledby="workTitle">
       <div class="work-inner">
         <div class="work-copy">
@@ -848,8 +868,8 @@
             <p class="lede">0-1 AI build and readable design system in just 4 months. Design speed increased more than 40%</p>
           </div>
         </div>
-        <figure class="work-media square reveal" data-reveal="scroll">
-          <iframe data-src="media/table-loop.html" allow="autoplay" title="Trade Radar design system: a button grows into an instruments table built from the atoms"></iframe>
+        <figure class="work-media reveal" data-reveal="scroll">
+          <iframe data-src="media/table-loop.html" data-channel="table-loop" allow="autoplay" title="Trade Radar design system: a button grows into an instruments table built from the atoms"></iframe>
         </figure>
       </div>
     </section>
@@ -1496,28 +1516,36 @@
 
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
 
-    /* ---------- second screen: reveals on scroll; the preview is a page in an iframe, loaded one screen ahead ---------- */
+    /* ---------- case screens: reveal on scroll; each preview is a page in an iframe, loaded one screen ahead ---------- */
     const scrollReveals = [...document.querySelectorAll('.reveal[data-reveal="scroll"]')];
+    // each case staggers on its own: the lede, then the preview, 90 ms apart
+    const revealDelay = new Map();
+    document.querySelectorAll('.work').forEach(s => s.querySelectorAll('.reveal[data-reveal="scroll"]').forEach((el, i) => revealDelay.set(el, 90 * i)));
     const scrollRevealIO = new IntersectionObserver((entries) => entries.forEach(({ isIntersecting, target }) => {
       if (!isIntersecting) return;
       scrollRevealIO.unobserve(target);
-      const delay = 90 * scrollReveals.indexOf(target);
+      const delay = revealDelay.get(target) || 0;
       setTimeout(() => target.setAttribute('data-reveal', 'shown'), delay);
       setTimeout(() => target.setAttribute('data-reveal', 'settled'), delay + 600);
     }), { threshold: .2 });
     scrollReveals.forEach(el => scrollRevealIO.observe(el));
 
-    // the table loop runs itself (reduced motion gets a still, sound is its own button); the site only hands it the theme:
-    // in the URL, again once it boots, and on every switch — postMessage works from file:// too
+    // each preview runs itself (the table loop, the chat film: reduced motion gets a still, sound is its own button); the
+    // site only hands it the theme and the UI scale on its channel: in the URL, again once it boots, and on every change —
+    // postMessage works from file:// too (the film is dark either way and takes only the scale)
     document.querySelectorAll('iframe[data-src]').forEach((frame) => {
+      const channel = frame.dataset.channel;
       const theme = () => root.getAttribute('data-theme');
-      const sendTheme = () => { if (frame.src) frame.contentWindow.postMessage({ type: 'table-loop', theme: theme() }, '*'); };
-      addEventListener('message', (e) => { if (e.source === frame.contentWindow && e.data && e.data.type === 'table-loop:state' && e.data.ready) sendTheme(); });
-      new MutationObserver(sendTheme).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+      const ui = () => parseFloat(token('--ui-scale')) || 1;
+      const send = () => { if (frame.src) frame.contentWindow.postMessage({ type: channel, theme: theme(), ui: ui() }, '*'); };
+      addEventListener('message', (e) => { if (e.source === frame.contentWindow && e.data && e.data.type === channel + ':state' && e.data.ready) send(); });
+      new MutationObserver(send).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+      let lastUi = ui();
+      addEventListener('resize', () => { const u = ui(); if (u !== lastUi) { lastUi = u; send(); } });   // across the md breakpoint
       const io = new IntersectionObserver(([e]) => {
         if (!e.isIntersecting) return;
         io.disconnect();
-        frame.src = `${frame.dataset.src}?theme=${theme()}`;
+        frame.src = `${frame.dataset.src}?theme=${theme()}&ui=${ui()}`;
       }, { rootMargin: '100% 0px' });
       io.observe(frame);
     });
