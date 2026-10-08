@@ -75,8 +75,9 @@
 <script>
 'use strict';
 /* ═══ Timing — Mixkit #1210 at 74.998 BPM, 8 bars from bar 3 of the intro (12.79 s, where its first new layer enters)
-   to the stop that ends bar 10. The 4 intro bars: a "New Atoms" button goes Unfilled → Outline → Primary, drops its
-   label, and its eye becomes the +; the + opens an empty widget that fills in place, then the promo dropdown. Try Pro
+   to the stop that ends bar 10. The 4 intro bars: a click under the headline sends it away and makes a "New Atoms"
+   button, which goes Unfilled → Outline → Primary, then closes onto its eye as the eye becomes the +; the + opens an
+   empty widget that fills in place, then the promo dropdown. Try Pro
    is clicked on the drop, and the first 4 bars of the groove unfold and work the table before it folds back into the
    +, which reopens as "New Atoms" on the stop. The whole intro is one B major drone, like the stop bar, so the loop
    wraps where the song breathes. seek(t) is a pure function of t. ═══ */
@@ -501,27 +502,29 @@ function timeline() {
   const keys = ['cx', 'cy', 'w', 'h', 'rad'];
   keys.forEach(k => T(k, R.na[k]));
   const shapeTo = (t, St, s = SP.geom) => keys.forEach(k => TR[k].to(t, St[k], s));
-  shapeTo(B(4), R.prim, SP.collapse);                               // the label goes, the button closes onto its icon
+  shapeTo(B(5), R.prim, SP.collapse);                               // the label goes, the button closes onto its icon
   shapeTo(B(6), R.wid, SP.wide);                                    // the + opens the empty widget around itself
   shapeTo(B(31), R.prim, SP.collapse);                              // the table folds back into the +
   shapeTo(B(1) + 0.2, R.na, SP.snap);                                // … which dissolves on the stop; unseen, it is "New Atoms" again
 
-  // the button's variant, one click each: Unfilled (no surface) → Outline (1 px inside) → Primary (filled)
-  T('fillA', 0).to(B(3), 1, SP.col).to(B(1) + 0.2, 0, SP.snap);
+  // the click on beat 2 makes the button (see the headline); then its variant, one click each: Unfilled (no surface) →
+  // Outline (1 px inside) → Primary (filled)
+  T('fillA', 0).to(B(4), 1, SP.col).to(B(1) + 0.2, 0, SP.snap);
   CT('fill', 'Button/Fill/Primary/Default');
   // (the swaps at B6 and B31 + 0.5 happen under the + button's own surface, so the widget never flashes purple)
   TR.fill.to(B(6), 'Background/Level1', SP.snap).to(B(31) + 0.5, 'Button/Fill/Primary/Default', SP.snap);
   CT('stroke', 'Button/Stroke/Outline/Default');
-  T('strokeA', 0).to(B(2), 1, SP.col).to(B(3), 0, SP.col);
+  T('strokeA', 0).to(B(3), 1, SP.col).to(B(4), 0, SP.col);
   CT('ink', 'Button/Icon/Unfilled/Default');
-  TR.ink.to(B(2), 'Button/Icon/Outline/Default').to(B(3), 'Button/Icon/Primary/Default').to(B(1) + 0.2, 'Button/Icon/Unfilled/Default', SP.snap);
+  TR.ink.to(B(3), 'Button/Icon/Outline/Default').to(B(4), 'Button/Icon/Primary/Default').to(B(1) + 0.2, 'Button/Icon/Unfilled/Default', SP.snap);
   CT('naInk', 'Button/Text/Unfilled/Default');
-  TR.naInk.to(B(2), 'Button/Text/Outline/Default').to(B(3), 'Button/Text/Primary/Default').to(B(1) + 0.2, 'Button/Text/Unfilled/Default', SP.snap);
-  inOut('naT', [[B(1) + 0.2, B(4)]], SP.snap, spring(0.16, 1));
+  TR.naInk.to(B(3), 'Button/Text/Outline/Default').to(B(4), 'Button/Text/Primary/Default').to(B(1) + 0.2, 'Button/Text/Unfilled/Default', SP.snap);
+  inOut('naT', [[B(1) + 0.2, B(5)]], SP.snap, spring(0.16, 1));
   const press = T('press', 0);
-  for (const b of [2, 3, 4]) press.to(B(b), 0.06, SP.press).to(B(b) + 0.085, 0, SP.release);
+  for (const b of [3, 4]) press.to(B(b), 0.06, SP.press).to(B(b) + 0.085, 0, SP.release);
 
-  // the glyph: the eye (lashes up) closes, its lid flattens into the plus's bar and the stem grows; reset unseen after the stop
+  // the glyph: as the button closes onto it, the eye (lashes up) closes, its lid flattens into the plus's bar and the stem
+  // grows; reset unseen after the stop
   T('eyeO', 1).to(B(5), 0, spring(0.2, 1)).to(B(1) + 0.2, 1, SP.snap);
   T('lashK', 1).to(B(5), 0, spring(0.12, 1)).to(B(1) + 0.2, 1, SP.snap);
   T('eyeF', 0).to(B(5) + 0.1, 1, spring(0.3, 1)).to(B(1) + 0.2, 0, SP.snap);
@@ -529,19 +532,20 @@ function timeline() {
 
   // ── camera: frames each state; zoom-outs move with the shape, zoom-ins lag
   const cam = (F, fw = 0.62, fh = 0.44, cap = 7) => [F.cx, F.cy, Math.log(Math.min(cap, fw * W / F.w, fh * H / F.h))];
-  // the opener sits under the headline: framed at ×6.5, the button's centre TY.hlDrop px below the frame's
+  // the opener is framed at ×6.5 in the middle of the frame, where it appears once the headline has gone; the + the
+  // table folds into settles TY.hlDrop px below the middle, clear of the headline that starts over it
   const low = c => [c[0], c[1] - TY.hlDrop / Math.exp(c[2]), c[2]];
-  const cNa = low(cam(R.na, 0.62, 0.44, 6.5)), cPrim = low(cam(R.prim, 0.62, 0.44, 6.5)), cWid = cam(R.wid, 0.8, 0.86);
+  const cNa = cam(R.na, 0.62, 0.44, 6.5), cPrim = cam(R.prim, 0.62, 0.44, 6.5), cFold = low(cPrim), cWid = cam(R.wid, 0.8, 0.86);
   T('camX', cNa[0]); T('camY', cNa[1]); T('camS', cNa[2]);
   const camTo = (t, c, s = SP.cam) => { TR.camX.to(t, c[0], s); TR.camY.to(t, c[1], s); TR.camS.to(t, c[2], s); };
-  camTo(B(4), cPrim, SP.camPan);                                   // follow the button onto its icon
+  camTo(B(5), cPrim, SP.camPan);                                   // follow the button onto its icon
   camTo(B(6), cWid, SP.camOut);                                    // the widget opens and fills the frame
   camTo(B(7), cam(rectTL(0, 0, 568, 352), 0.94, 0.9), SP.camIn);   // lean onto its top half as the content lands there
   camTo(B(13) - 0.3, cam(R.drop, 0.8, 0.8, 3.4), spring(0.7, 1));  // lean in as the cursor reaches the Primary button
   camTo(B(17), cWid, SP.camOut);                                   // Try Pro: back out to watch the groups unfold
   camTo(B(19), cam(R.badgeCam, 0.62, 0.44, 5.5), spring(0.7, 1));  // push in on the header: the PRO badge appears after the link
   camTo(B(21), cWid, SP.camOut);
-  camTo(B(31), cPrim, SP.camIn);
+  camTo(B(31), cFold, SP.camIn);
   camTo(B(1) + 0.2, cNa, SP.snap);                                 // reframed unseen, between the + and the opener
 
   // ── the + button inside the header: the shape is its surface until the widget opens (B6) and after the fold (B31)
@@ -627,7 +631,7 @@ function timeline() {
   // ── cursor (world space). A key is the moment a move starts; hovers land on the beat, clicks press on it.
   const rowBox = r => [32, rowY(r) + 13];
   const P = {
-    na: [L.naX + M.na * 0.42, L.prim.y + 17],                  // on the label: it stays put while the button closes
+    na: [L.naX + M.na * 0.42, L.prim.y + 17],                  // on the label, mid-frame: the click that makes the button lands here
     eye: [L.iconX(0) + 13, L.prim.y + 22],                    // the button's centre, just clear of the glyph: the pupil centres
     badge: [L.badge.x + L.badge.w + 20, 30],                  // beside the PRO badge's slot, in frame for the close-up
     prim: [L.prim.x + 17, L.prim.y + 17], rest0: [L.prim.x + 76, L.prim.y + 62], wRest: [300, 240],
@@ -643,8 +647,8 @@ function timeline() {
   move(B(30) + 0.3, P.rest0, SP.cursorLong);                // straight after ×, ahead of the camera's zoom onto the +
   // the camera reframes from the + to the opener under the headline (B1 + 0.2): the resting cursor goes with it, so it
   // doesn't jump on screen
-  move(B(1) + 0.2, [P.rest0[0] + cNa[0] - cPrim[0], P.rest0[1] + cNa[1] - cPrim[1]], SP.snap);
-  arrive(2, P.na);                                           // three clicks on the label, then it waits beside the icon
+  move(B(1) + 0.2, [P.rest0[0] + cNa[0] - cFold[0], P.rest0[1] + cNa[1] - cFold[1]], SP.snap);
+  arrive(2, P.na);                                           // a click on the empty middle makes the button, two more change it
   move(B(4) + 0.3, P.eye, SP.cursorLong);                   // onto the button: the eye looks straight at it, then the +
   move(B(6) + 0.3, P.wRest, SP.cursorLong);
   arrive(10, P.all); move(B(10) + 0.4, P.tabRest);
@@ -678,16 +682,15 @@ function timeline() {
   // ── the opening headline, as in the chat film: the claim, then the product's name, word by word on 16ths (close to the
   // film's 8ths in seconds), each rising 21.6 px out of a blur. The first word comes a 16th before the stop, as the folded +
   // settles below the lines, the second on the stop; the claim lands in the silence after it and the name as the drone
-  // comes back. It leaves on the press that opens the widget, fast and rising away, before the + swings up through its
-  // lines as the camera pulls back
+  // comes back. It leaves on the click of beat 2, fast and rising away, and the button grows out of that click in the
+  // middle of the empty frame: the text is gone before the button comes
   L.HL0 = B(32) - BEAT / 4;                                        // where the loop's line starts; the page starts here too
   L.hlIn = k => L.HL0 + k * BEAT / 4;
-  // the opener waits for the headline, as the MacBook does in the film: it grows in out of a blur right after the last
-  // word, ahead of its first click on beat 2. On the stop the folded + shrinks away into a blur (the stop's dot) under the
-  // first words, so the loop hands over from the + to the lines
-  T('naA', 0).to(B(1) + 0.5, 1, spring(0.34, 1)).to(B(32) + 0.1, 0, spring(0.55, 1));
+  // the opener grows in out of a blur where the cursor clicked, as the last of the headline goes. On the stop the folded
+  // + shrinks away into a blur (the stop's dot) under the first words, so the loop hands over from the + to the lines
+  T('naA', 0).to(B(2) + 0.08, 1, spring(0.34, 1)).to(B(32) + 0.1, 0, spring(0.55, 1));
   HL_WORDS.forEach((w, k) => {
-    const tOut = B(6) - 0.04 + 0.006 * k;
+    const tOut = B(2) - 0.04 + 0.006 * k;
     T('hl' + k, 0).to(L.hlIn(k), 1, SP.hlIn).to(tOut, 0, SP.hlOut);
     T('hldy' + k, 21.6).to(L.hlIn(k), 0, SP.hlRise).to(tOut, -36, SP.hlOut).to(tOut + 0.4, 21.6, SP.snap);
   });
