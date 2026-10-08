@@ -77,7 +77,7 @@
 /* ═══ Timing — Mixkit #1210 at 74.998 BPM, 8 bars from bar 3 of the intro (12.79 s, where its first new layer enters)
    to the stop that ends bar 10. The 4 intro bars: a click under the headline sends it away and makes a "New Atoms"
    button, which goes Unfilled → Outline → Primary, then closes onto its eye as the eye becomes the +; the + opens an
-   empty widget that fills in place, then the promo dropdown. Try Pro
+   empty widget that fills in place, then the promo dropdown. Try free
    is clicked on the drop, and the first 4 bars of the groove unfold and work the table before it folds back into the
    +, which reopens as "New Atoms" on the stop. The whole intro is one B major drone, like the stop bar, so the loop
    wraps where the song breathes. seek(t) is a pure function of t. ═══ */
@@ -131,6 +131,8 @@ const TOK = {
   'Button/Icon/Outline/Default':     ['#f0f0f0', '#0f0f0f'],
   'Button/Fill/Secondary/Default':  ['#393244', '#b6aec4'],   // frame controls
   'Button/Fill/Secondary/Hover':     ['#554a66', '#dad5e1'],
+  'Button/Fill/Secondary/Pressed':   ['#201c26', '#9386a8'],   // the promo's Try free (TR DS: Neutral/Dark/02, Neutral/Light/06)
+  'Button/Text/Secondary/Default':   ['#f0f0f0', '#0f0f0f'],
   'Button/Icon/Secondary/Default':   ['#f0f0f0', '#0f0f0f'],
   'Button/Stroke/Secondary/Focused': ['#7d3ee3', '#7d3ee3'],
   'Button/Icon/Primary/Default':     ['#f0f0f0', '#f0f0f0'],
@@ -333,12 +335,15 @@ function textW(str, ty) {
 // word above the "New Atoms" button and leaves on the click that opens the widget. No captions: the parts name themselves.
 const HEADLINE = [['From', 'atoms', 'to', 'products.'], ['Trade', 'Radar', 'design', 'system']];
 const HL_WORDS = HEADLINE.flat();
-const DD_ITEMS = ['OJSC MegaFon', 'PJSC Seligdar', 'PJSC Sberbank'];    // curve-promo-drop1 (ds-promo 17:6719)
+const DD_ITEMS = ['RUB-FWC-RUONIA', 'RUB-FWC-KEYRTE', 'RUB-DSC-CSARUB'];   // dropdown-menu + promo2 (ds-promo 1937:19425)
+// its promo card, in English like the rest of the loop (the mock's «+9 кривых на графике», «Пробная версия — 14 дней бесплатно»)
+const PROMO = { title: '+9 curves on the chart', sub: 'Free 14-day trial', try: 'Try free', cart: 'Add to cart' };
 function measure() {
   M.title = textW(TITLE, TY.title);
   M.tabs = TABS.map(s => textW(s, TY.tab));
   M.fav = textW('Favorites', TY.btn); M.add = textW('Add', TY.btn);
-  M.badge = textW('PRO', TY.badge); M.try = textW('Try Pro', TY.btn); M.na = textW('New Atoms', TY.btn);
+  M.badge = textW('PRO', TY.badge); M.na = textW('New Atoms', TY.btn);
+  M.try = textW(PROMO.try, TY.btn); M.cart = textW(PROMO.cart, TY.btn);
   M.hl = HEADLINE.map(line => line.map(w => textW(w, TY.hl))); M.hlSpace = textW(' ', TY.hl); M.hlDot = textW('.', TY.hl);
 }
 
@@ -369,10 +374,13 @@ function layout() {
   });
   L.badge = { x: L.linkX + 16 + TY.gapTCL, y: 8, w: 8 + 16 + 4 + M.badge + 8 };   // Badge · Neutral: 8 · icon 16 · 4 · label · 8
   L.R.badgeCam = rectTL(L.badge.x - 30, 0, L.badge.w + 60, 60);   // centred on the badge, the link and title beside it
-  // curve-promo-drop1 opens under the Primary button, right-aligned to it
-  L.dd = { w: 215, h: 206 }; L.dd.l = L.prim.x + 32 - L.dd.w; L.dd.t = 40;
+  // dropdown-menu + promo2 opens under the Primary button, right-aligned to it: three items, then the promo card (5, 105),
+  // 205 × 160, whose two CTAs (New Button · S · Text, Secondary then Primary) run full width at its foot
+  L.dd = { w: 215, h: 270 }; L.dd.l = L.prim.x + 32 - L.dd.w; L.dd.t = 40;
   L.R.drop = rectTL(L.dd.l - 14, 0, L.prim.x + 32 + 14 - (L.dd.l - 14), L.dd.t + L.dd.h + 10);
-  L.cta = { x: L.dd.l + 13, y: L.dd.t + 169, w: 8 + 6 + M.try + 6 + 16 + 8 };   // Try Pro (New Button · Primary · S · Text + arrow)
+  L.pr = { x: 5, y: 105, w: 205, h: 160 };
+  L.ctaTry = { x: 8, y: 96, w: 190 }; L.ctaCart = { x: 8, y: 128, w: 190 };     // in the card
+  L.cta = { x: L.dd.l + L.pr.x + L.ctaTry.x, y: L.dd.t + L.pr.y + L.ctaTry.y, w: L.ctaTry.w };   // Try free, the one clicked
   // Action panel (3rd button = Dropdown): 12 · info 16 · 8 · value … Favorites ▾ · 8 · Add · 8 · × · 8
   const ap = L.ap = { l: 28, t: 602, w: 512, h: TY.apH, r: TY.apR };
   const by = (ap.h - 24) / 2;                           // button row, local to the panel
@@ -382,13 +390,21 @@ function layout() {
   L.apFav = { w: 8 + 16 + 4 + M.fav + 4 + 16 + 8 }; L.apFav.x = L.apAdd.x - 8 - L.apFav.w;
 }
 
-// The promo card's curves (ds-promo 17:6726, mirrored into x 85–205 of the card): three rising-and-easing lines from one
-// origin, three small points and one highlighted point — redrawn as paths on DS ink so they flip with the theme.
+// The promo card's waves (ds-promo 1937:19432, Curves line_Spread, as it shows: mirrored into x 85–205, y 24–104 of the
+// card, clipped to its 120 × 80): three waves, each a 0.5 px line over a fill that fades down from ink 20 % (at 60 %), two
+// small points and one highlighted point — redrawn on DS ink so they flip with the theme. The lines run left to right, the
+// way they draw themselves; the areas are the export's own closed shapes (their closing edges fall outside the clip).
 const CURVES = {
-  a: 'M0 79.5C40 76 55 9.5 84.5 9.5C100 9.5 110 22 120 32.5',
-  b: 'M0 79.5C40 74 58 25.75 84 25.75C100 25.75 110 36 120 43.75',
-  c: 'M0 79.5C40 72 60 44.5 82.5 44.5C100 44.5 112 47 120 51',
-  dots: [[84.5, 9.5], [82.5, 44.5], [47.25, 50.6]], hi: [84, 25.75],
+  a: 'M6.465 82L15.895 64.88L19.365 58.58C22.835 52.28 29.776 39.68 36.716 33.38C43.657 27.08 50.597 27.08 57.537 29.6C64.477 32.12 71.418 37.16 78.358 39.68C85.298 42.2 92.239 42.2 99.179 38.42C106.119 34.64 113.06 27.08 116.53 23.3L120 19.52L121.475 17.913',
+  b: 'M6.287 82L15.895 66.98L19.365 61.555C22.835 56.13 29.776 45.28 36.716 39.855C43.656 34.43 50.597 34.43 57.537 36.6C64.477 38.77 71.418 43.11 78.358 45.28C85.298 47.45 92.239 47.45 99.179 44.195C106.119 40.94 113.06 34.43 116.53 31.175L120 27.92L121.475 26.536',
+  c: 'M5.973 82L15.895 69.553L19.365 65.2C22.835 60.847 29.776 52.14 36.716 47.787C43.656 43.434 50.597 43.434 57.537 45.175C64.477 46.917 71.418 50.399 78.358 52.14C85.298 53.882 92.239 53.882 99.179 51.27C106.119 48.658 113.06 43.434 116.53 40.822L120 38.21L121.475 37.1',
+  area: {
+    a: 'M121.475 17.9131L120 19.5201L116.53 23.3001C113.06 27.0801 106.119 34.6401 99.1791 38.4201C92.2387 42.2001 85.2984 42.2001 78.3581 39.6801C71.4178 37.1601 64.4774 32.1201 57.5371 29.6001C50.5968 27.0801 43.6565 27.0801 36.7161 33.3801C29.7758 39.6801 22.8355 52.2801 19.3653 58.5801L15.8951 64.8801L6.4653 82.0001H121.475V17.9131Z',
+    b: 'M121.475 26.5361L120 27.9201L116.53 31.1751C113.06 34.4301 106.119 40.9401 99.1791 44.1951C92.2387 47.4501 85.2984 47.4501 78.3581 45.2801C71.4178 43.1101 64.4774 38.7701 57.5371 36.6001C50.5968 34.4301 43.6564 34.4301 36.7161 39.8551C29.7758 45.2801 22.8355 56.1301 19.3653 61.5551L15.8951 66.9801L6.28726 82.0001H121.475V26.5361Z',
+    c: 'M121.475 37.0996L120 38.2096L116.53 40.8216C113.06 43.4336 106.119 48.6576 99.1791 51.2696C92.2387 53.8816 85.2984 53.8816 78.3581 52.1396C71.4178 50.3986 64.4774 46.9166 57.5371 45.1746C50.5968 43.4336 43.6564 43.4336 36.7161 47.7866C29.7758 52.1396 22.8355 60.8466 19.3653 65.1996L15.8951 69.5526L5.97251 81.9996H121.475V37.0996Z',
+  },
+  top: { a: 17.9131, b: 26.5361, c: 37.0996 },             // where each fill's fade starts
+  dots: [[48.294, 28.025], [48.294, 44.087]], hi: [48.5, 35.5], hiR: 4,
 };
 
 function build() {
@@ -463,26 +479,37 @@ function build() {
   EL.favBg = div('fill', ap); EL.favStar = icon('star', ap); EL.favT = text('Favorites', TY.btn, ap); EL.favChev = icon('chevron-down', ap);
   EL.addBg = div('fill', ap); EL.addT = text('Add', TY.btn, ap);
   EL.xBg = div('fill', ap); EL.x = icon('x', ap);
-  // curve-promo-drop1: Background/Level2 surface, Stroke/Divider, radius/xxs, the DS drop shadow
+  // dropdown-menu + promo2: Background/Level2 surface, Stroke/Divider, radius/xxs, the DS drop shadow
   const dd = EL.dd = div('a', I);
   dd.style.width = L.dd.w + 'px'; dd.style.height = L.dd.h + 'px'; dd.style.borderRadius = '4px'; dd.style.transformOrigin = '100% 0'; dd.style.display = 'none';
   EL.ddHov = DD_ITEMS.map(() => div('fill', dd));
   EL.ddCb = DD_ITEMS.map(() => check(dd));
   EL.ddT = DD_ITEMS.map(s => text(s, TY.cell, dd));
-  const pr = EL.promo = div('a', dd);                   // the promo card: Background/Main, radius/sm, clips its curves
-  pr.style.left = '5px'; pr.style.top = '105px'; pr.style.width = '205px'; pr.style.height = '96px'; pr.style.borderRadius = '8px'; pr.style.overflow = 'hidden';
+  const pr = EL.promo = div('a', dd);                   // the promo card: Background/Main, radius/sm, clips its waves
+  pr.style.left = L.pr.x + 'px'; pr.style.top = L.pr.y + 'px'; pr.style.width = L.pr.w + 'px'; pr.style.height = L.pr.h + 'px';
+  pr.style.borderRadius = '8px'; pr.style.overflow = 'hidden';
+  // the waves, bottom to top as in the mock: each fill (revealed up to the tip of its line as it draws), its line, its point
   const cv = document.createElementNS(NS, 'svg');
   cv.setAttribute('viewBox', '0 0 120 80'); cv.setAttribute('width', '120'); cv.setAttribute('height', '80');
-  cv.style.position = 'absolute'; cv.style.left = '85px'; cv.style.top = '7px'; cv.style.overflow = 'visible';
-  cv.innerHTML = ['a', 'b', 'c'].map(k => `<path d="${CURVES[k]}" fill="none" stroke="currentColor" stroke-width="0.6" pathLength="1" stroke-dasharray="1 1"/>`).join('') +
-    CURVES.dots.map(([px, py]) => `<circle class="d" cx="${px}" cy="${py}" r="1.75" fill="currentColor"/>`).join('') +
-    `<circle class="hi" cx="${CURVES.hi[0]}" cy="${CURVES.hi[1]}" r="5"/>`;
+  cv.style.position = 'absolute'; cv.style.left = '85px'; cv.style.top = '24px'; cv.style.overflow = 'hidden';
+  const pts = { a: `<circle class="d" cx="${CURVES.dots[0][0]}" cy="${CURVES.dots[0][1]}" r="1.5" fill="currentColor"/>`,
+                b: `<circle class="hi" cx="${CURVES.hi[0]}" cy="${CURVES.hi[1]}" r="${CURVES.hiR}"/>`,
+                c: `<circle class="d" cx="${CURVES.dots[1][0]}" cy="${CURVES.dots[1][1]}" r="1.5" fill="currentColor"/>` };
+  cv.innerHTML = '<defs>' + ['a', 'b', 'c'].map(k =>
+      `<linearGradient id="ddWaveG${k}" x1="60" y1="${CURVES.top[k]}" x2="60" y2="82" gradientUnits="userSpaceOnUse">` +
+      '<stop offset="0" stop-opacity="0.2"/><stop offset="1" stop-opacity="0"/></linearGradient>' +
+      `<clipPath id="ddWaveC${k}"><rect x="0" y="0" width="0" height="80"/></clipPath>`).join('') + '</defs>' +
+    ['a', 'b', 'c'].map(k =>
+      `<path class="f" d="${CURVES.area[k]}" fill="url(#ddWaveG${k})" fill-opacity="0.6" clip-path="url(#ddWaveC${k})"/>` +
+      `<path class="l" d="${CURVES[k]}" fill="none" stroke="currentColor" stroke-width="0.5" pathLength="1" stroke-dasharray="1 1"/>` + pts[k]).join('');
   pr.appendChild(cv); EL.curves = cv; EL.curveHi = cv.querySelector('.hi');
-  EL.curvePaths = [...cv.querySelectorAll('path')]; EL.curveDots = [...cv.querySelectorAll('circle.d')];
-  EL.pTitle = text('+ 12 000 stocks', TY.promoTitle, pr);
-  EL.pSub = text('Two weeks free trial', TY.promoSub, pr);
-  EL.ctaBg = div('fill', pr); EL.ctaT = text('Try Pro', TY.btn, pr); EL.ctaIcon = icon('arrow-right', pr);
+  EL.curvePaths = [...cv.querySelectorAll('path.l')]; EL.curveDots = [...cv.querySelectorAll('circle.d')];
+  EL.waveStops = [...cv.querySelectorAll('stop')]; EL.waveClips = [...cv.querySelectorAll('clipPath rect')];
+  EL.pTitle = text(PROMO.title, TY.promoTitle, pr);
+  EL.pSub = text(PROMO.sub, TY.promoSub, pr);
   EL.pClose = icon('x', pr);
+  EL.tryBg = div('fill', pr); EL.tryT = text(PROMO.try, TY.btn, pr);
+  EL.cartBg = div('fill', pr); EL.cartT = text(PROMO.cart, TY.btn, pr);
   // the opening headline, screen space
   EL.hl = HL_WORDS.map(w => text(w, TY.hl, EL.headline));
 }
@@ -542,7 +569,7 @@ function timeline() {
   camTo(B(6), cWid, SP.camOut);                                    // the widget opens and fills the frame
   camTo(B(7), cam(rectTL(0, 0, 568, 352), 0.94, 0.9), SP.camIn);   // lean onto its top half as the content lands there
   camTo(B(13) - 0.3, cam(R.drop, 0.8, 0.8, 3.4), spring(0.7, 1));  // lean in as the cursor reaches the Primary button
-  camTo(B(17), cWid, SP.camOut);                                   // Try Pro: back out to watch the groups unfold
+  camTo(B(17), cWid, SP.camOut);                                   // Try free: back out to watch the groups unfold
   camTo(B(19), cam(R.badgeCam, 0.62, 0.44, 5.5), spring(0.7, 1));  // push in on the header: the PRO badge appears after the link
   camTo(B(21), cWid, SP.camOut);
   camTo(B(31), cFold, SP.camIn);
@@ -583,7 +610,7 @@ function timeline() {
   for (let k = 0; k < 5; k++) inOut('ht' + k, [[B(11) + 0.1 * (k + 1), B(31) + 0.02 * (k + 1)]]);
   inOut('hdiv', [[B(11), B(31)]]);
 
-  // group rows: Stocks (B12) and Currency (an 8th later) land collapsed and unfold after Try Pro
+  // group rows: Stocks (B12) and Currency (an 8th later) land collapsed and unfold after Try free
   const g0 = B(12), g1 = B(12) + 0.4;
   for (const n of ['g0chev', 'g0text', 'g0fill', 'g0div']) inOut(n, [[g0, B(31) + 0.02]]);
   T('g0divW', 536);
@@ -593,7 +620,7 @@ function timeline() {
   T('g1dy', 10).to(g1, 0, SP.row).to(B(32), 10, SP.snap);
   T('g1rot', 180).to(B(18) + 0.04, 0, spring(0.3, 0.92)).to(B(32), 180, SP.snap);
 
-  // ── rows: they unfold under their group on 64ths (Stocks a 16th after the Try Pro click, Currency a beat later), retract on the fold
+  // ── rows: they unfold under their group on 64ths (Stocks a 16th after the Try free click, Currency a beat later), retract on the fold
   ROWS.forEach((row, r) => {
     const A = r < NSTOCK ? B(17) + 0.2 + 0.045 * r : B(18) + 0.1 + 0.06 * (r - NSTOCK), E = B(31) + 0.012 * r;
     T('ra' + r, 0).to(A, 1, spring(0.26, 1)).to(E, 0, spring(0.14, 1));
@@ -602,7 +629,7 @@ function timeline() {
     row.appear = A;
   });
 
-  // ── curve-promo-drop1: opens from the Primary button, its curve draws itself, the cursor goes to Try Pro
+  // ── dropdown-menu + promo2: opens from the Primary button, its waves draw themselves, the cursor goes to Try free
   T('ddOp', 0).to(B(14) + 0.02, 1, spring(0.22, 1)).to(B(17) + 0.04, 0, spring(0.14, 1));
   T('ddSc', 0.94).to(B(14) + 0.02, 1, spring(0.3, 0.92)).to(B(17) + 0.04, 0.97, spring(0.14, 1)).to(B(18), 0.94, SP.snap);
   T('ddDy', -6).to(B(14) + 0.02, 0, spring(0.3, 0.92)).to(B(18), -6, SP.snap);
@@ -787,6 +814,18 @@ function drawGlyph(E, x, y, lab, g) {
   E.v.setAttribute('d', g.stem > 0.01 ? `M12 ${(12 - 7 * g.stem).toFixed(3)}L12 ${(12 + 7 * g.stem).toFixed(3)}` : '');
 }
 
+// x of the tip of wave i when a fraction u of its line is drawn: sampled along the path once it is laid out (the dropdown
+// is display:none until it first opens), so a wave's fill can follow its line
+let WAVE_X = null;
+function waveTipX(i, u) {
+  if (!WAVE_X) WAVE_X = EL.curvePaths.map(p => {
+    const len = p.getTotalLength(), n = 96;
+    return Array.from({ length: n + 1 }, (_, j) => p.getPointAtLength(len * j / n).x);
+  });
+  const lut = WAVE_X[i], f = clamp(u) * (lut.length - 1), j = Math.min(lut.length - 2, Math.floor(f));
+  return lerp(lut[j], lut[j + 1], f - j);
+}
+
 // worldIn: the time for everything but the headline (only the page's first pass holds it back, see L.WORLD0)
 function seek(tIn, worldIn = tIn) {
   const t = ((worldIn % LOOP) + LOOP) % LOOP, th = ((tIn % LOOP) + LOOP) % LOOP;
@@ -915,7 +954,7 @@ function seek(tIn, worldIn = tIn) {
     putI(EL.x, xx + 4, by + 4, xo, C('Button/Icon/Unfilled/Default'));
   } else if (ap.display !== 'none') ap.display = 'none';
 
-  // curve-promo-drop1 (local coordinates inside the dropdown)
+  // dropdown-menu + promo2 (local coordinates inside the dropdown)
   const dO = op('ddOp'), ds = EL.dd.style;
   if (dO > 0.003) {
     ds.display = '';
@@ -932,20 +971,29 @@ function seek(tIn, worldIn = tIn) {
       put(EL.ddT[k], 45, y + 8, 1, C('Dropdown-Item/Text/Label'));
     }
     EL.promo.style.background = labCss(C('Background/Main'));
-    EL.curves.style.color = labCss(C('Icon/Primary'));
+    const ink = labCss(C('Icon/Primary'));
+    EL.curves.style.color = ink;
+    EL.waveStops.forEach(s => s.setAttribute('stop-color', ink));
     EL.curveHi.setAttribute('fill', labCss(C('Dot-Indicator/Fill/Brand')));
-    const cd = clamp(at('curveDraw')), cdots = clamp(at('curveDots'));       // the curve draws itself, then its points land
-    EL.curvePaths.forEach((p, i) => p.setAttribute('stroke-dashoffset', (1 - clamp(cd * 1.15 - i * 0.075)).toFixed(4)));
+    // the waves draw themselves left to right, each fill following the tip of its line; then their points land
+    const cd = clamp(at('curveDraw')), cdots = clamp(at('curveDots'));
+    EL.curvePaths.forEach((p, i) => {
+      const u = clamp(cd * 1.15 - i * 0.075);
+      p.setAttribute('stroke-dashoffset', (1 - u).toFixed(4));
+      EL.waveClips[i].setAttribute('width', (u > 0 ? waveTipX(i, u) : 0).toFixed(3));
+    });
     EL.curveDots.forEach(c => c.setAttribute('opacity', cdots.toFixed(4)));
-    EL.curveHi.setAttribute('r', (5 * Math.max(0, at('curveDots'))).toFixed(3));
+    EL.curveHi.setAttribute('r', (CURVES.hiR * Math.max(0, at('curveDots'))).toFixed(3));
     put(EL.pTitle, 8, 8, 1, C('Text/Primary'));
     put(EL.pSub, 8, 32, 1, C('Text/Primary'));
-    const cp = op('ctaPress');
-    const ctaLab = mix(mix(C('Button/Fill/Primary/Default'), C('Button/Fill/Primary/Hover'), op('ctaHov')), C('Button/Fill/Primary/Pressed'), cp);
-    box(EL.ctaBg, 8 + cp * 1.5, 64 + cp * 0.6, L.cta.w - cp * 3, 24 - cp * 1.2, ctaLab, 1, TY.btnR);
-    put(EL.ctaT, 22, 68, 1, C('Button/Text/Primary/Default'));
-    putI(EL.ctaIcon, 28 + M.try, 68, 1, C('Button/Icon/Primary/Default'));
     putI(EL.pClose, 185, 4, 1, C('Button/Icon/Unfilled/Default'));
+    // the two CTAs, full width: Try free (Secondary) takes the hover and the click, Add to cart (Primary) waits under it
+    const cp = op('ctaPress'), t = L.ctaTry, c = L.ctaCart;
+    const tryLab = mix(mix(C('Button/Fill/Secondary/Default'), C('Button/Fill/Secondary/Hover'), op('ctaHov')), C('Button/Fill/Secondary/Pressed'), cp);
+    box(EL.tryBg, t.x + cp * 1.5, t.y + cp * 0.6, t.w - cp * 3, 24 - cp * 1.2, tryLab, 1, TY.btnR);
+    put(EL.tryT, t.x + (t.w - M.try) / 2, t.y + 4, 1, C('Button/Text/Secondary/Default'));
+    box(EL.cartBg, c.x, c.y, c.w, 24, C('Button/Fill/Primary/Default'), 1, TY.btnR);
+    put(EL.cartT, c.x + (c.w - M.cart) / 2, c.y + 4, 1, C('Button/Text/Primary/Default'));
   } else if (ds.display !== 'none') ds.display = 'none';
 
   // cursor (screen space, projected from the world)
