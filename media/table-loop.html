@@ -1088,6 +1088,31 @@ function scriptAudio() {                                // table-loop.audio.js =
     document.head.appendChild(el);
   });
 }
+// iOS plays Web Audio as "ambient", which the silent switch mutes (the chat film's <video> it doesn't). While the sound is
+// on, ask for the "playback" session, and keep a silent <audio> playing: a media element at play is what moves the page
+// onto the media channel where the session type isn't taken (an older iOS, or from inside a frame). It goes on sound off,
+// and the lock-screen player with it.
+const IOS = /iP(hone|ad|od)/.test(navigator.platform) || navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+let silentEl = null, silentUrl = '';
+function mediaChannel(on) {
+  if (navigator.audioSession) navigator.audioSession.type = on ? 'playback' : 'auto';
+  if (!IOS) return;
+  if (on && !silentEl) {
+    if (!silentUrl) {                                    // 0.5 s of 48 kHz mono 16-bit silence, as a WAV
+      const n = 24000, v = new DataView(new ArrayBuffer(44 + 2 * n));
+      const tag = (o, t) => { for (let i = 0; i < 4; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+      tag(0, 'RIFF'); v.setUint32(4, 36 + 2 * n, true); tag(8, 'WAVE'); tag(12, 'fmt '); v.setUint32(16, 16, true);
+      v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 48000, true); v.setUint32(28, 96000, true);
+      v.setUint16(32, 2, true); v.setUint16(34, 16, true); tag(36, 'data'); v.setUint32(40, 2 * n, true);
+      silentUrl = URL.createObjectURL(new Blob([v], { type: 'audio/wav' }));
+    }
+    silentEl = new Audio(silentUrl);
+    silentEl.loop = true; silentEl.disableRemotePlayback = true; silentEl.setAttribute('x-webkit-airplay', 'deny');
+    silentEl.play().catch(() => {});                     // in the click, like the sound itself
+  } else if (!on && silentEl) {
+    silentEl.pause(); silentEl.removeAttribute('src'); silentEl.load(); silentEl = null;
+  }
+}
 async function setSound(on) {
   if (on === Live.sound || Live.busy) return postState();
   if (on) {
@@ -1098,8 +1123,7 @@ async function setSound(on) {
     Live.busy = true;                                    // ignore repeat clicks while the audio loads
     syncControls();
     start();                                             // the sound button means "play it", even under a third in view
-    // iOS plays Web Audio as "ambient", which the silent switch mutes (the chat film's <video> it doesn't)
-    if (navigator.audioSession) navigator.audioSession.type = 'playback';
+    mediaChannel(true);
     try {
       Live.ctx = Live.ctx || new (window.AudioContext || window.webkitAudioContext)();
       const resumed = await Promise.race([Live.ctx.resume().then(() => true), new Promise(r => setTimeout(() => r(false), gesture ? 10000 : 300))]);
@@ -1114,7 +1138,7 @@ async function setSound(on) {
       src.start(when, off);
       Live.audio0 = when - off; Live.src = src; Live.gain = g; Live.sound = true;
     } catch (e) {
-      if (navigator.audioSession) navigator.audioSession.type = 'auto';
+      mediaChannel(false);
       Live.sound = false; Live.busy = false; Live.wantSound = /autoplay/.test(String(e.message || e));
       syncControls(); postState({ error: String(e.message || e) }); return;
     }
@@ -1125,7 +1149,7 @@ async function setSound(on) {
     const { src, gain, ctx } = Live;
     if (src) { gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime); gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.06); src.stop(ctx.currentTime + 0.07); }
     Live.src = null; Live.sound = false;
-    if (navigator.audioSession) navigator.audioSession.type = 'auto';
+    mediaChannel(false);
   }
   syncControls(); postState();
 }
