@@ -46,6 +46,11 @@
   #controls button:focus-visible { outline: 2px solid var(--ctl-ring); outline-offset: 2px; }
   #controls svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   #controls [hidden] { display: none; }
+  /* while the sound starts (the audio output waking, the track loading) the icon breathes: the click visibly took */
+  #controls button[aria-busy="true"] { cursor: progress; }
+  #controls button[aria-busy="true"] svg { animation: ctl-busy .7s ease-in-out infinite alternate; }
+  @keyframes ctl-busy { to { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { #controls button[aria-busy="true"] svg { animation: none; opacity: .45; } }
   html.render #controls, html.nocontrols #controls { display: none; }
 </style>
 </head>
@@ -1039,14 +1044,33 @@ function start() {
 async function loadAudio() {
   if (Live.buffer) return Live.buffer;
   if (!Live.loading) Live.loading = (async () => {
-    let bytes = null;
-    if (/^https?:$/.test(location.protocol)) {           // served: fetch the lossless sidecar
-      try { const r = await fetch(Q.get('audio') || 'table-loop.flac'); if (r.ok) bytes = await r.arrayBuffer(); } catch (e) { /* fall back */ }
-    }
-    if (!bytes) bytes = await scriptAudio();               // opened from disk: fetch() is blocked on file://, a <script> is not
+    // served: the lossless sidecar. Opened from disk (fetch() is blocked on file://, a <script> is not) or missing on the
+    // server: the same FLAC as base64 in a script. A download that breaks or stalls throws instead (the script would stall
+    // the same way), and the next click starts it over.
+    const bytes = (/^https?:$/.test(location.protocol) && await fetchAudio(Q.get('audio') || 'table-loop.flac')) || await scriptAudio();
     return (Live.buffer = await Live.ctx.decodeAudioData(bytes));
   })().catch(e => { Live.loading = null; throw e; });     // a failed load can be retried
   return Live.loading;
+}
+// The track is 2.7 MB. A connection that stops mid-file (a throttling ISP) would hold the button for good, so 15 s
+// without a byte gives up; a slow one that keeps going is waited for.
+async function fetchAudio(url) {
+  const ctl = new AbortController();
+  let idle = 0;
+  const poke = () => { clearTimeout(idle); idle = setTimeout(() => ctl.abort(new Error('the audio download stalled')), 15000); };
+  poke();
+  try {
+    const r = await fetch(url, { signal: ctl.signal });
+    if (!r.ok) return null;
+    if (!r.body) return await r.arrayBuffer();
+    const reader = r.body.getReader(), parts = [];
+    let n = 0;
+    for (let c; !(c = await reader.read()).done; poke()) { parts.push(c.value); n += c.value.length; }
+    const u = new Uint8Array(n);
+    n = 0;
+    for (const p of parts) { u.set(p, n); n += p.length; }
+    return u.buffer;
+  } finally { clearTimeout(idle); }
 }
 function scriptAudio() {                                // table-loop.audio.js = the same FLAC as base64 in window.TABLE_LOOP_AUDIO
   return new Promise((resolve, reject) => {
@@ -1067,12 +1091,18 @@ function scriptAudio() {                                // table-loop.audio.js =
 async function setSound(on) {
   if (on === Live.sound || Live.busy) return postState();
   if (on) {
+    // After a click or a key in this frame resume() settles once the audio output is up, which can take a while (Bluetooth
+    // headphones, a phone waking its audio): wait for it. Without a gesture (the host page's message, a host opened from
+    // disk) it never settles: give up at once, and the next click in here starts the sound.
+    const gesture = !navigator.userActivation || navigator.userActivation.isActive;
     Live.busy = true;                                    // ignore repeat clicks while the audio loads
+    syncControls();
     start();                                             // the sound button means "play it", even under a third in view
+    // iOS plays Web Audio as "ambient", which the silent switch mutes (the chat film's <video> it doesn't)
+    if (navigator.audioSession) navigator.audioSession.type = 'playback';
     try {
       Live.ctx = Live.ctx || new (window.AudioContext || window.webkitAudioContext)();
-      // Without a gesture in this frame (e.g. a host page opened from disk) resume() never settles — don't wait on it forever.
-      const resumed = await Promise.race([Live.ctx.resume().then(() => true), new Promise(r => setTimeout(() => r(false), 300))]);
+      const resumed = await Promise.race([Live.ctx.resume().then(() => true), new Promise(r => setTimeout(() => r(false), gesture ? 10000 : 300))]);
       if (!resumed || Live.ctx.state !== 'running') throw new Error('autoplay blocked: click inside the frame');
       await loadAudio();
       const p = phase(), lat = Live.ctx.outputLatency || Live.ctx.baseLatency || 0, when = Live.ctx.currentTime + 0.06;
@@ -1084,6 +1114,7 @@ async function setSound(on) {
       src.start(when, off);
       Live.audio0 = when - off; Live.src = src; Live.gain = g; Live.sound = true;
     } catch (e) {
+      if (navigator.audioSession) navigator.audioSession.type = 'auto';
       Live.sound = false; Live.busy = false; Live.wantSound = /autoplay/.test(String(e.message || e));
       syncControls(); postState({ error: String(e.message || e) }); return;
     }
@@ -1094,6 +1125,7 @@ async function setSound(on) {
     const { src, gain, ctx } = Live;
     if (src) { gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime); gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.06); src.stop(ctx.currentTime + 0.07); }
     Live.src = null; Live.sound = false;
+    if (navigator.audioSession) navigator.audioSession.type = 'auto';
   }
   syncControls(); postState();
 }
@@ -1102,6 +1134,7 @@ function syncControls() {
   const show = (id, on) => document.getElementById(id).toggleAttribute('hidden', !on);   // SVG has no .hidden property
   show('icoSoundOn', Live.sound); show('icoSoundOff', !Live.sound);
   bs.setAttribute('aria-pressed', String(Live.sound)); bs.setAttribute('aria-label', Live.sound ? 'Turn sound off' : 'Turn sound on');
+  bs.setAttribute('aria-busy', String(!!Live.busy));
   show('icoSun', !Live.theme); show('icoMoon', !!Live.theme);            // dark shows the sun (go light), light shows the moon
   bt.setAttribute('aria-label', Live.theme ? 'Switch to dark theme' : 'Switch to light theme');
 }
