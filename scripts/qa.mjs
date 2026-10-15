@@ -31,7 +31,7 @@ const BROWSERS = list(opt('browsers', 'chromium,webkit,firefox'));
 /* ═══ Budgets (ms from navigation) ═══ */
 const BUDGET = {
   hero: 3000,          // headline + lede visible
-  // the case previews load one screen ahead (the film with the page, the table loop once the film's screen is reached),
+  // the case previews load one screen ahead (the table loop with the page, the film once the loop's screen is reached),
   // so what counts is how long a visitor who scrolls to one waits on an empty card: from scrolled into view to booted
   wait: 2000,          // chat film's header read / table loop booted (window.ready inside the iframe)
   filmPlay: 4000,      // …and the film then playing in view: 0.5 s of it shown
@@ -211,8 +211,32 @@ async function runScenario(browser, engine, sc, baseUrl) {
     res.metrics.mainFonts = await page.evaluate(loadedFamilies).catch(() => []);
     await shot('hero');
 
-    // 3 · second screen: scroll to the chat film, wait for its first frame, check it plays (a still under reduced motion)
+    // 3 · second screen: scroll to the table loop, wait for it to boot
     const waitBudget = sc.slowNet ? BUDGET.waitSlowNet : BUDGET.wait;
+    const loopShownAt = Date.now();
+    await page.evaluate(() => document.querySelector('iframe[data-src*="table-loop"]')?.closest('.work-media')?.scrollIntoView({ block: 'center' })).catch(() => {});
+    let frame = null, loopAt = null;
+    while (since() < BUDGET.cap) {
+      frame = frameOf(page, 'table-loop');
+      if (frame && (loopAt = await frame.evaluate(() => window.__qa && window.__qa.ready).catch(() => null))) break;
+      await page.waitForTimeout(150);
+    }
+    const loopReady = !!loopAt;
+    res.metrics.loopMs = loopReady ? Math.round(loopAt - navStart) : null;
+    if (!loopReady) fail('table loop never started (grey card)');
+    else {
+      res.metrics.loopWaitMs = Math.max(0, Math.round(loopAt - loopShownAt));
+      if (res.metrics.loopWaitMs > waitBudget) fail(`table loop started ${sec(res.metrics.loopWaitMs)} after it came into view (budget ${waitBudget / 1000} s) — grey card until then`);
+    }
+    if (loopReady) {
+      res.metrics.loopFonts = await frame.evaluate(loadedFamilies).catch(() => []);
+      const fontOk = await frame.evaluate(() => window.fontOk).catch(() => null);
+      if (fontOk === false) warn('table loop laid out with a fallback font (Inter missing)');
+    }
+    await page.waitForTimeout(2500);
+    await shot('loop');
+
+    // 4 · third screen: scroll to the chat film, wait for its first frame, check it plays (a still under reduced motion)
     const filmShownAt = Date.now();
     await page.evaluate(() => document.querySelector('iframe[data-src*="chat-promo"]')?.closest('.work-media')?.scrollIntoView({ block: 'center' })).catch(() => {});
     let film = null, filmAt = null;
@@ -238,35 +262,12 @@ async function runScenario(browser, engine, sc, baseUrl) {
       else if (st && (st.paused || st.t < 0.5)) fail(`chat film not playing ${playBudget / 1000} s after it came into view (paused ${st.paused}, at ${st.t.toFixed(2)} s)`);
     }
     await shot('film');
-
-    // 4 · third screen: scroll to the table loop, wait for it to boot
-    const loopShownAt = Date.now();
-    await page.evaluate(() => document.querySelector('iframe[data-src*="table-loop"]')?.closest('.work-media')?.scrollIntoView({ block: 'center' })).catch(() => {});
-    if (film) {   // the film pauses once it is out of view
+    if (film) {   // the film pauses once it is out of view: back up to the table loop
+      await page.evaluate(() => document.querySelector('iframe[data-src*="table-loop"]')?.closest('.work-media')?.scrollIntoView({ block: 'center' })).catch(() => {});
       await page.waitForTimeout(400);
       const paused = await film.evaluate(() => document.getElementById('film').paused).catch(() => null);
       if (paused === false) fail('chat film keeps playing out of view');
     }
-    let frame = null, loopAt = null;
-    while (since() < BUDGET.cap) {
-      frame = frameOf(page, 'table-loop');
-      if (frame && (loopAt = await frame.evaluate(() => window.__qa && window.__qa.ready).catch(() => null))) break;
-      await page.waitForTimeout(150);
-    }
-    const loopReady = !!loopAt;
-    res.metrics.loopMs = loopReady ? Math.round(loopAt - navStart) : null;
-    if (!loopReady) fail('table loop never started (grey card)');
-    else {
-      res.metrics.loopWaitMs = Math.max(0, Math.round(loopAt - loopShownAt));
-      if (res.metrics.loopWaitMs > waitBudget) fail(`table loop started ${sec(res.metrics.loopWaitMs)} after it came into view (budget ${waitBudget / 1000} s) — grey card until then`);
-    }
-    if (loopReady) {
-      res.metrics.loopFonts = await frame.evaluate(loadedFamilies).catch(() => []);
-      const fontOk = await frame.evaluate(() => window.fontOk).catch(() => null);
-      if (fontOk === false) warn('table loop laid out with a fallback font (Inter missing)');
-    }
-    await page.waitForTimeout(2500);
-    await shot('loop');
 
     // 5 · auto-translate
     if (sc.translate) {
@@ -311,7 +312,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;
 const sec = (ms) => ms == null ? '—' : (ms / 1000).toFixed(1) + ' s';
 function reportHtml(results, { scenario, browser, compact } = {}) {
   const rows = results.filter(r => (!scenario || r.scenario === scenario) && (!browser || r.browser === browser));
-  const shotNames = ['2s', 'hero', 'film', 'loop', 'translated'];
+  const shotNames = ['2s', 'hero', 'loop', 'film', 'translated'];
   const body = rows.map(r => `
     <section>
       <h2>${esc(r.scenario)} · ${esc(r.browser)} <small>${esc(r.note)} · hero ${sec(r.metrics.heroMs)} · film ${sec(r.metrics.filmMs)} (wait ${sec(r.metrics.filmWaitMs)}) · loop ${sec(r.metrics.loopMs)} (wait ${sec(r.metrics.loopWaitMs)})</small></h2>
